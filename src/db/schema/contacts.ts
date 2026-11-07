@@ -1,4 +1,4 @@
-import { index, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { channels } from "./channels";
 
 // One real person. May have several identities (WhatsApp number, Facebook PSID).
@@ -6,6 +6,11 @@ export const contacts = pgTable("contacts", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name"),
   notes: text("notes"),
+  // Explicit consent to receive marketing/broadcast messages. Broadcasts go ONLY to opted-in contacts.
+  optedIn: boolean("opted_in").notNull().default(false),
+  optedInAt: timestamp("opted_in_at", { withTimezone: true }),
+  // How consent was obtained/changed: "manual", "csv_import", "customer_stop", ...
+  optInSource: text("opt_in_source"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

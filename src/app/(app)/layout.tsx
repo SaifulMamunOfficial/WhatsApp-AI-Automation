@@ -32,6 +32,11 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
           {user.role === "admin" && (
+            <Link href="/broadcasts" className="text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400">
+              Broadcast
+            </Link>
+          )}
+          {user.role === "admin" && (
             <Link href="/settings/automations" className="text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400">
               অটোমেশন
             </Link>

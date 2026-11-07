@@ -92,6 +92,7 @@ export async function importContactsAction(_prev: ImportState | undefined, formD
     csv: await file.text(),
     extraTag: String(formData.get("extraTag") ?? "").trim() || undefined,
     dryRun: formData.get("dryRun") === "on",
+    optIn: formData.get("optIn") === "on",
   });
   if (!result.dryRun && !result.fatal) refresh();
   return { result };

@@ -5,6 +5,8 @@ import type { NormalizedMessage, StatusUpdate, WebhookEvents } from "@/channels/
 import { publishInboxEvent } from "./events";
 import { ingestContactSync } from "@/core/contacts/sync";
 import { ingestHistoryChunk } from "./history";
+import { applyTemplateStatusEvents } from "@/core/broadcast/templates";
+import { isOptOutText } from "@/core/contacts/consent";
 
 // Channel-neutral ingestion: turns normalized webhook events into contacts,
 // conversations and messages. It must be fast (webhooks answer 200 quickly) and
@@ -21,6 +23,10 @@ export interface IngestResult {
   historyMessages: number;
   /** Coexistence: contacts added from the phone's address book. */
   contactsSynced: number;
+  /** Templates whose status changed (Meta review result, pause, ...). */
+  templatesUpdated: number;
+  /** Customers who withdrew consent by replying with a stop word. */
+  optedOut: number;
   /** Newly stored live customer messages: the automation engine runs on these. */
   newInbound: { conversationId: string; messageExternalId: string }[];
   failed: number;
@@ -43,6 +49,8 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
     statusesApplied: 0,
     historyMessages: 0,
     contactsSynced: 0,
+    templatesUpdated: 0,
+    optedOut: 0,
     newInbound: [],
     failed: 0,
   };
@@ -60,6 +68,7 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
           publishInboxEvent({ type: "conversation", conversationId });
           if (m.direction === "inbound" && m.source === "api") {
             result.newInbound.push({ conversationId, messageExternalId: m.externalId });
+            if (m.type === "text" && isOptOutText(m.text) && (await withdrawConsent(db, conversationId))) result.optedOut++;
           }
         }
       } else if (outcome === "duplicate") result.duplicates++;
@@ -75,6 +84,15 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
   for (const s of events.statuses) {
     try {
       result.statusesApplied += await applyStatus(db, s);
+    } catch (err) {
+      result.failed++;
+      firstError ??= err;
+    }
+  }
+
+  if (events.templateStatus?.length) {
+    try {
+      result.templatesUpdated += await applyTemplateStatusEvents(db, events.templateStatus);
     } catch (err) {
       result.failed++;
       firstError ??= err;
@@ -288,4 +306,16 @@ async function applyStatus(db: Db, s: StatusUpdate): Promise<number> {
     .returning({ id: schema.messages.id, conversationId: schema.messages.conversationId });
   for (const row of updated) publishInboxEvent({ type: "conversation", conversationId: row.conversationId });
   return updated.length;
+}
+
+/** A customer replied with a stop word: they no longer receive broadcasts. */
+async function withdrawConsent(db: Db, conversationId: string): Promise<boolean> {
+  const [conv] = await db.select({ contactId: schema.conversations.contactId }).from(schema.conversations).where(eq(schema.conversations.id, conversationId)).limit(1);
+  if (!conv) return false;
+  const done = await db
+    .update(schema.contacts)
+    .set({ optedIn: false, optInSource: "customer_stop", updatedAt: new Date() })
+    .where(and(eq(schema.contacts.id, conv.contactId), eq(schema.contacts.optedIn, true)))
+    .returning({ id: schema.contacts.id });
+  return done.length > 0;
 }

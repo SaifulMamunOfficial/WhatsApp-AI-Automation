@@ -33,7 +33,7 @@ const empty = (dryRun: boolean): ImportResult => ({ dryRun, created: 0, updated:
 
 export async function importContactsCsv(
   db: Db,
-  input: { channelId: string; csv: string; extraTag?: string; dryRun: boolean },
+  input: { channelId: string; csv: string; extraTag?: string; dryRun: boolean; optIn?: boolean },
 ): Promise<ImportResult> {
   const result = empty(input.dryRun);
   const fail = (m: string): ImportResult => ({ ...result, fatal: m });
@@ -100,6 +100,10 @@ export async function importContactsCsv(
 
       // Fills the name only if the contact has none: an import never overwrites what is known.
       const identity = await ensureIdentityByKey(tx, channel.id, phone, name || undefined);
+      // The admin asserted that everyone in this file agreed to receive messages.
+      if (input.optIn) {
+        await tx.update(schema.contacts).set({ optedIn: true, optedInAt: new Date(), optInSource: "csv_import" }).where(eq(schema.contacts.id, identity.contactId));
+      }
       for (const t of tagNames) {
         await tx.insert(schema.contactTags).values({ contactId: identity.contactId, tagId: await tagId(t) }).onConflictDoNothing();
       }

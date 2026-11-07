@@ -77,12 +77,24 @@ export interface ContactSyncEvent {
   timestamp: Date;
 }
 
+/** A template status change reported by Meta (message_template_status_update). */
+export interface TemplateStatusEvent {
+  wabaId: string;
+  metaTemplateId?: string;
+  name?: string;
+  language?: string;
+  /** Meta event, e.g. APPROVED, REJECTED, PAUSED, DISABLED. */
+  event: string;
+  reason?: string;
+}
+
 export interface WebhookEvents {
   messages: NormalizedMessage[];
   statuses: StatusUpdate[];
   /** Present only for WhatsApp Coexistence webhooks. */
   history?: HistoryChunk[];
   contactSync?: ContactSyncEvent[];
+  templateStatus?: TemplateStatusEvent[];
 }
 
 export interface SendTextInput {

@@ -28,6 +28,10 @@ export function ImportForm({ channels }: { channels: { id: string; name: string 
           সবার জন্য একটা ট্যাগ (ঐচ্ছিক)
           <input name="extraTag" maxLength={40} placeholder="যেমন: ২০২৬ ব্যাচ" className={`${field} mt-1`} />
         </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="optIn" className="mt-1" />
+          <span>এই ফাইলের সবাই প্রতিষ্ঠানের কাছ থেকে মেসেজ (broadcast) পেতে সম্মতি দিয়েছেন, আমি নিশ্চিত। (টিক না দিলে তারা broadcast পাবে না।)</span>
+        </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="dryRun" defaultChecked /> আগে পরীক্ষা করুন (কিছু সেভ হবে না)
         </label>

@@ -100,7 +100,7 @@ src/
 9. [x] Automation ইঞ্জিন (welcome, keyword menu, office hours, human-reply pause) (আসল Docker Postgres-এ সই-করা webhook দিয়ে end-to-end যাচাই; আসল Meta-তে পাঠানো বাকি। Job queue (pg-boss) ধাপ ১০-এ; এখন webhook-এর 200-এর পরে `after()` দিয়ে চলে)
 10. [x] AI bot + knowledge base (কাঠামো, নকল-provider টেস্ট, অ্যাডমিন পেজ ও আসল Postgres-এ UI যাচাই সম্পূর্ণ; **আসল AI API key দিয়ে কোনো উত্তর এখনো যাচাই হয়নি**, কারণ key নেই। pg-boss queue এখনো যোগ হয়নি, `after()`-ই আছে)
 11. [x] কন্টাক্ট, ট্যাগ, merge, CSV import (আসল Docker Postgres-এ যাচাই; CSV ফাইল-আপলোড ফর্ম ব্রাউজারে চালানো হয়নি, শুধু সার্ভিস-টেস্ট)
-12. [ ] WhatsApp templates + broadcast
+12. [x] WhatsApp templates + broadcast (সুরক্ষা-নিয়মসহ কোড, টেস্ট ও আসল Postgres-এ চালানো; **আসল Meta-তে template জমা/অনুমোদন/পাঠানো একবারও হয়নি**; নিচের "অযাচাইকৃত" তালিকা দেখো)
 13. [ ] VPS deploy (Docker Compose, Caddy, backups), পূর্ণ পরীক্ষা
 14. [ ] আসল নম্বর ও পেজ যুক্ত করা — bot বন্ধ রেখে (ব্যবহারকারীর অনুমতি নিয়ে)
 
@@ -163,6 +163,16 @@ src/
 - **CSV import**: কলাম নাম ইংরেজি/বাংলা (name/নাম, phone/মোবাইল, tags/ট্যাগ), delimiter স্বয়ংক্রিয় (কমা/সেমিকোলন/ট্যাব), BOM ঠিক। নম্বর normalize (`01711-000001`, `+8801711…`, `০১৭১১…` সব → `8801711…`)। শুধু WhatsApp চ্যানেলে; ≤৫০০০ সারি, ≤২ MB। **আগে থেকে থাকা নাম কখনো বদলায় না** (শুধু ট্যাগ যোগ হয়); ফাইলের ভেতর একই নম্বর বারবার থাকলে গোনা হয়, ডুপ্লিকেট হয় না; ত্রুটিপূর্ণ সারি লাইন-নম্বরসহ দেখায়, বাকিগুলো যায়। **Dry run** (ডিফল্ট টিক): একই transaction চালিয়ে rollback, কিছু সেভ হয় না।
 - **opt-in**: import করা কন্টাক্টরা WhatsApp broadcast পেতে সম্মত কি না, সিস্টেম এখনো ট্র্যাক করে না। ধাপ ১২-তে broadcast-এর আগে opt-in ফিল্ড/শর্ত যোগ করতে হবে।
 - **শিক্ষা**: drizzle একক-টেবিল select-এ কলাম টেবিল-নাম ছাড়া লেখে; raw `sql` সাবকুয়েরিতে `"id"` ভুল টেবিলে বাঁধে। এমন জায়গায় কলাম পূর্ণ-যোগ্য নামে লেখো, আর টেস্টে শুধু ক্রম নয় আসল মান যাচাই করো।
+
+## Template ও broadcast (ধাপ ১২-তে সিদ্ধান্ত)
+
+- **সম্মতি (opt-in)**: `contacts.opted_in` (ডিফল্ট `false`, উৎস `opt_in_source`)। Broadcast **শুধু সম্মতিপ্রাপ্তদের** কাছে। সম্মতি দেওয়া যায়: অ্যাডমিন কন্টাক্ট-পেজে হাতে, বা CSV import-এ "সবাই সম্মত" টিক দিয়ে। গ্রাহক শুধু `STOP / unsubscribe / optout / opt out / স্টপ / আনসাবস্ক্রাইব` (পুরো মেসেজ, "বন্ধ" নয়) লিখলে সম্মতি নিজে থেকে চলে যায়। পাঠানোর মুহূর্তেও আবার যাচাই হয় (frozen তালিকা তৈরির পরে STOP এলেও মানা হয়)।
+- **সুরক্ষা-নিয়ম** (`src/core/broadcast/engine.ts`): শুধু `approved` template ও WhatsApp চ্যানেল; প্রাপক তালিকা তৈরির সময় **জমাট (frozen)** ও সর্বোচ্চ `BROADCAST_MAX_RECIPIENTS` (ডিফল্ট ১০০০); শুধু আসল ফোন নম্বর (BSUID নয়); শুরুর জন্য **প্রাপকের সঠিক সংখ্যা টাইপ** করতে হয়; আসল (non-test) চ্যানেলে `ALLOW_BROADCAST=true`ও লাগে; এক কন্টাক্টে একবারই।
+- **Resumable**: প্রতিটা প্রাপক একটা সারি (`broadcast_recipients`), শর্তসাপেক্ষ update দিয়ে claim ⇒ একাধিক worker/ক্র্যাশেও কেউ দুবার পায় না; ৫ মিনিট পুরনো claim ছাড়া হয়; অস্থায়ী ত্রুটিতে (5xx/429/নেটওয়ার্ক) ৩ বার চেষ্টা। সেন্ড `after()`-এ, প্রায় ৬টি/সেকেন্ডে (`delayMs: 160`)। pg-boss নেই; আটকে গেলে অ্যাডমিন "আবার চালান" চাপে।
+- **নিজে থেমে যায় (auto-pause)**: ২০টির পর ৩০%-এর বেশি ব্যর্থ হলে; Meta-র template/সীমা সংক্রান্ত ত্রুটি কোডে (`130429, 131048, 131056, 132000, 132001, 132005, 132007, 132012, 132015, 132016, 133010`); বা template আর `approved` না থাকলে। বাকিরা `pending` থাকে, কিছু হারায় না।
+- Template জীবনচক্র: Meta থেকে sync, নতুন জমা (`positional {{n}}`, নমুনা মান বাধ্যতামূলক), `message_template_status_update` webhook-এ অবস্থা হালনাগাদ। পাঠানো template ইনবক্সে `type=template` মেসেজ হিসেবে দেখায়; **broadcast থেকে তৈরি কথোপকথন `closed`** (খোলা ইনবক্স ভরে না)।
+- **অযাচাইকৃত (Meta ডকে পাইনি, নিজের জানা আচরণে লেখা)**: template তালিকার paging/ফিল্ড; create-এর response; `message_template_status_update` payload (`event`, `message_template_id/name/language`, `reason`); error কোডের তালিকা ও অর্থ (উপরের কোডগুলো); messaging-limit tier ও marketing per-user সীমা (131049); ছবি/বোতাম/header সহ template (শুধু BODY সমর্থিত)। আসল Meta-তে প্রথম পরীক্ষায় এগুলো মিলিয়ে নাও, ভুল ধরা পড়লে parser/কোড ঠিক করো।
+- WhatsApp-এর ২৪ ঘণ্টার বাইরে একটা কথোপকথনে ব্যক্তিগতভাবে template পাঠানো (ইনবক্স থেকে) **এখনো নেই**; ইনবক্স এখনো "template লাগে" বলে থামে।
 
 ## Docker ছাড়া ডেভ ডাটাবেস
 

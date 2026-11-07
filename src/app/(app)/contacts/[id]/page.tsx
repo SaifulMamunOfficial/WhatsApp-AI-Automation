@@ -8,6 +8,7 @@ import { getContactDetail, listTagsWithCounts, searchContactsForMerge } from "@/
 import { db } from "@/db";
 import { formatFull } from "@/lib/format";
 import { Chip } from "../page";
+import { setOptInAction } from "@/core/broadcast/actions";
 
 export const metadata = { title: "কন্টাক্ট — Saimum CRM" };
 
@@ -57,6 +58,21 @@ async function Content({ params, searchParams }: Props) {
           <textarea name="notes" defaultValue={contact.notes ?? ""} rows={3} maxLength={5000} placeholder="নোট (শুধু কর্মীরা দেখেন)" className={field} />
           <button type="submit" className={btn}>সংরক্ষণ</button>
         </form>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-semibold">মেসেজ পাওয়ার সম্মতি (broadcast)</h2>
+        <p className="text-sm">
+          {contact.optedIn ? "✅ সম্মতি আছে" : "❌ সম্মতি নেই (broadcast পাবে না)"}
+          {contact.optInSource && <span className="text-zinc-500"> · সূত্র: {contact.optInSource}{contact.optedInAt && contact.optedIn ? `, ${formatFull(contact.optedInAt)}` : ""}</span>}
+        </p>
+        {user.role === "admin" && (
+          <form action={setOptInAction}>
+            <input type="hidden" name="contactId" value={contact.id} />
+            <input type="hidden" name="optedIn" value={String(!contact.optedIn)} />
+            <button type="submit" className={btn}>{contact.optedIn ? "সম্মতি তুলে নিন" : "সম্মতি আছে বলে চিহ্নিত করুন"}</button>
+          </form>
+        )}
       </section>
 
       <section className="space-y-2">

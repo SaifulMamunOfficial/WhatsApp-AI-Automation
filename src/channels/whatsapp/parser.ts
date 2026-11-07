@@ -59,6 +59,11 @@ export function parseWhatsAppWebhook(payload: unknown): WebhookEvents {
       if (!isObj(change) || !isObj(change.value)) continue;
       const value = change.value;
       const field = str(change.field);
+      // Template status changes are WABA-level: no phone_number_id, the account id is the entry id.
+      if (field === "message_template_status_update") {
+        parseTemplateStatus(value, str(entry.id), out);
+        continue;
+      }
       const channelExternalId = isObj(value.metadata) ? str(value.metadata.phone_number_id) : undefined;
       if (!channelExternalId) continue;
 
@@ -75,6 +80,19 @@ export function parseWhatsAppWebhook(payload: unknown): WebhookEvents {
     }
   }
   return out;
+}
+
+function parseTemplateStatus(value: Obj, wabaId: string | undefined, out: WebhookEvents) {
+  const event = str(value.event);
+  if (!wabaId || !event) return;
+  (out.templateStatus ??= []).push({
+    wabaId,
+    metaTemplateId: value.message_template_id !== undefined ? String(value.message_template_id) : undefined,
+    name: str(value.message_template_name),
+    language: str(value.message_template_language),
+    event,
+    reason: str(value.reason),
+  });
 }
 
 // --- WhatsApp Coexistence -------------------------------------------------------------
