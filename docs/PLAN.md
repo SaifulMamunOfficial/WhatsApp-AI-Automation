@@ -33,6 +33,14 @@
 - [ ] AI API key
 - [ ] Bot-এর জন্য সাধারণ প্রশ্ন-উত্তরের তালিকা
 
+## বাস্তবায়নের অবস্থা
+
+- [x] ধাপ ১: Next.js 16 + Tailwind 4, Drizzle ORM, `docker-compose.yml` (Postgres 16), Vitest, `src/` কাঠামো। `build`, `typecheck`, `lint`, `test` পাস।
+- [ ] ধাপ ১ বাকি যাচাই: Docker Desktop ইনস্টল করে `npm run db:up` ও `npm run db:migrate` চালানো।
+- [x] ধাপ ২: লগইন/লগআউট, DB session, admin/agent রোল, proxy সুরক্ষা, `scripts/create-user.ts`। টেস্ট (পাসওয়ার্ড, token, rate limit, role) ও build পাস।
+- [ ] ধাপ ২ বাকি যাচাই: Docker চালু করে migration (`0001`) চালানো, `create-user` দিয়ে admin বানিয়ে ব্রাউজারে লগইন/লগআউট দেখা।
+- [ ] ধাপ ৩ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
+
 ## VPS deploy (ধাপ ৫)
 
 1. Docker Compose: অ্যাপ + PostgreSQL (DB বাইরে খোলা নয়)

@@ -35,12 +35,21 @@
 
 - Next.js (App Router, TypeScript), Tailwind CSS
 - PostgreSQL (লোকালে Docker, production-এ VPS-এ Docker Compose)
-- ORM: Prisma বা Drizzle (শুরুতে একটা বেছে নিয়ে এখানে লিখে রাখো)
+- ORM: **Drizzle** (`drizzle-orm` + `pg` + `drizzle-kit`; স্কিমা `src/db/schema.ts`, migration `drizzle/`)
 - Background jobs: Postgres-ভিত্তিক queue (যেমন pg-boss) — আলাদা Redis এড়াতে
 - Real-time inbox: Server-Sent Events বা WebSocket
 - AI: OpenAI বা Anthropic API (env দিয়ে বাছাই)
 - Hosting: Hostinger VPS (KVM 4, Ubuntu 24.04), ডোমেইন `crm.saimum.org`, HTTPS-এর জন্য Caddy বা Nginx
 - লোকাল টেস্টে webhook-এর জন্য `cloudflared tunnel --url http://localhost:3000`
+
+## Auth (ধাপ ২-এ সিদ্ধান্ত)
+
+- নিজস্ব DB-ভিত্তিক session: cookie `session`-এ র‍্যান্ডম token (httpOnly, sameSite=lax, production-এ secure), `sessions` টেবিলে শুধু SHA-256 হ্যাশ। মেয়াদ ১৪ দিন, sliding।
+- পাসওয়ার্ড: Node `crypto.scrypt` (N=2^17), ন্যূনতম ১০ অক্ষর। সাইন-আপ পেজ নেই; ইউজার বানাতে `npx tsx scripts/create-user.ts --email … --name "…" --role admin|agent` (পাসওয়ার্ড `CRM_USER_PASSWORD` env থেকে, না দিলে র‍্যান্ডম তৈরি হয়)।
+- `src/proxy.ts` (Next 16-এ middleware-এর নতুন নাম) শুধু cookie আছে কি না দেখে; আসল যাচাই `requireUser()` / `requireRole()` (`src/core/auth/dal.ts`)। প্রতিটা Server Action ও API route-এ নিজে role চেক করবে।
+- `cacheComponents` চালু: session পড়া কম্পোনেন্ট অবশ্যই `<Suspense>`-এর ভেতরে।
+- `/api/webhooks/*` proxy-র বাইরে (সই দিয়ে যাচাই হবে)।
+- লগইনে ব্যর্থ চেষ্টার সীমা (ইমেইল+IP প্রতি ১৫ মিনিটে ৫ বার), in-memory; একাধিক instance চালালে DB-তে সরাতে হবে।
 
 ## আর্কিটেকচার — চ্যানেল-নিরপেক্ষ
 
@@ -80,8 +89,8 @@ src/
 
 ## কাজের ক্রম (বর্তমান অবস্থা অনুযায়ী হালনাগাদ রাখো)
 
-1. [ ] প্রজেক্টের কাঠামো: Next.js + Tailwind, Docker-এ Postgres, ORM, migration
-2. [ ] লগইন ও রোল (admin, agent)
+1. [x] প্রজেক্টের কাঠামো: Next.js + Tailwind, Docker-এ Postgres, ORM, migration (কোড ও কনফিগ তৈরি; Docker ইনস্টল না থাকায় `db:migrate` চালিয়ে যাচাই বাকি)
+2. [x] লগইন ও রোল (admin, agent) (কোড তৈরি; DB না থাকায় আসল লগইন-লগআউট ফ্লো যাচাই বাকি)
 3. [ ] চ্যানেল-ভিত্তিক ডাটাবেস স্কিমা
 4. [ ] Channel adapter interface + WhatsApp webhook/sender (টেস্ট নম্বর)
 5. [ ] Messenger webhook/sender (টেস্ট পেজ)

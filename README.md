@@ -6,6 +6,18 @@ Saimum Shilpigosthi-র নিজস্ব CRM: WhatsApp Business (Coexistence) 
 - পরিকল্পনা: `docs/PLAN.md`
 - Meta API নোট: `docs/META_NOTES.md`
 
+## লোকালে চালানো
+
+```bash
+npm install
+cp .env.example .env   # তারপর পাসওয়ার্ড ও secret বদলাও
+npm run db:up          # Docker-এ PostgreSQL
+npm run db:migrate     # টেবিল তৈরি
+npm run dev            # http://localhost:3000
+```
+
+অন্য কমান্ড: `npm test`, `npm run typecheck`, `npm run lint`, `npm run db:generate` (স্কিমা বদলালে), `npm run db:studio`।
+
 ## Claude Code দিয়ে শুরু
 
 ```bash
