@@ -21,6 +21,8 @@ export interface IngestResult {
   historyMessages: number;
   /** Coexistence: contacts added from the phone's address book. */
   contactsSynced: number;
+  /** Newly stored live customer messages: the automation engine runs on these. */
+  newInbound: { conversationId: string; messageExternalId: string }[];
   failed: number;
 }
 
@@ -41,6 +43,7 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
     statusesApplied: 0,
     historyMessages: 0,
     contactsSynced: 0,
+    newInbound: [],
     failed: 0,
   };
   let firstError: unknown;
@@ -53,7 +56,12 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
       if (outcome === "stored") {
         result.stored++;
         // Published after the transaction committed, so listeners always see the data.
-        if (conversationId) publishInboxEvent({ type: "conversation", conversationId });
+        if (conversationId) {
+          publishInboxEvent({ type: "conversation", conversationId });
+          if (m.direction === "inbound" && m.source === "api") {
+            result.newInbound.push({ conversationId, messageExternalId: m.externalId });
+          }
+        }
       } else if (outcome === "duplicate") result.duplicates++;
       else result.unknownChannel++;
     } catch (err) {

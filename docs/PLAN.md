@@ -52,7 +52,9 @@
 - [ ] ধাপ ৭ বাকি: আসল Meta App + Tech Provider সেটআপের পর Embedded Signup-এর end-to-end (FB SDK অংশ এখনো ব্রাউজারে পরীক্ষিত নয়); আসল history/state_sync payload ধরে fixture বদলানো; media (`media_placeholder`) পরে আলাদা webhook-এ আসে, এখনো ধরা হয়নি।
 - [x] ধাপ ৮: Facebook Page সংযোগ: লগইন → পরিচালিত পেজের তালিকা (token ছাড়া) → বেছে সংযুক্ত (long-lived exchange, MESSAGING/MANAGE অনুমতি যাচাই, `subscribed_apps` = messages, message_echoes, messaging_postbacks, token এনক্রিপ্ট)। ১২৫টি টেস্ট পাস।
 - [ ] ধাপ ৮ বাকি: আসল Meta App + টেস্ট পেজে Facebook Login end-to-end; `pages_*` permission-এর App Review; Messenger কাস্টমারের নাম Graph থেকে আনা (এখন PSID দেখায়); ডকে অযাচাইকৃত: Page token মেয়াদ, `/me/accounts`।
-- [ ] ধাপ ৯ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
+- [x] ধাপ ৯: Automation: স্বাগত, keyword উত্তর/মেনু, অফিস সময়ের বাইরে নোটিস, মানুষ উত্তর দিলে bot থামা (ধাপ ৪–৬-এ বসানো `bot_paused`), প্রতি চ্যানেলে bot সুইচ, অ্যাডমিন পেজ। ১৫৮টি টেস্ট পাস। আসল Docker Postgres-এ সই-করা webhook → bot উত্তর যাচাই (Meta-তে নকল token ⇒ "ব্যর্থ", প্রত্যাশিত)।
+- [ ] ধাপ ৯ বাকি: "শুধু অফিস সময়ের বাইরে bot" মোড (go-live পর্যায়ের জন্য); চ্যানেল-ভিত্তিক নিয়ম UI (ডাটাবেস সমর্থন করে, পেজে এখন শুধু সবার জন্য); নিয়মের ক্রম বদলানো; durable queue (ধাপ ১০)।
+- [ ] ধাপ ১০ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
 
 ## VPS deploy (ধাপ ৫)
 
