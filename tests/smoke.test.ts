@@ -5,11 +5,12 @@ describe("test setup", () => {
   it("resolves the @ alias and channel types", () => {
     const msg: NormalizedMessage = {
       channelType: "whatsapp",
-      channelId: "ch_1",
+      channelExternalId: "106540352242922",
       externalId: "wamid.test",
       contactExternalId: "8801700000000",
       direction: "inbound",
       source: "api",
+      type: "text",
       text: "hello",
       timestamp: new Date(0),
     };

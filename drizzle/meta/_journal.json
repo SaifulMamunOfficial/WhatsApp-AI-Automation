@@ -15,6 +15,13 @@
       "when": 1794046046413,
       "tag": "0001_cold_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794046944277,
+      "tag": "0002_rapid_phantom_reporter",
+      "breakpoints": true
     }
   ]
 }

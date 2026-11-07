@@ -1,0 +1,22 @@
+{
+  "object": "page",
+  "entry": [
+    {
+      "id": "110000000000001",
+      "time": 1518479195308,
+      "messaging": [
+        {
+          "sender": { "id": "5550001112223334" },
+          "recipient": { "id": "110000000000001" },
+          "timestamp": 1518479195308,
+          "message": {
+            "mid": "mid.attachment:0001",
+            "attachments": [
+              { "type": "image", "payload": { "url": "https://example.com/image.jpg" } }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

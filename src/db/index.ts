@@ -4,16 +4,10 @@ import * as schema from "./schema";
 
 const globalForDb = globalThis as unknown as { pgPool?: Pool };
 
-function createPool(): Pool {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is not set");
-  }
-  return new Pool({ connectionString, max: 10 });
-}
-
-// Reuse one pool across Next.js dev hot reloads.
-export const pool = globalForDb.pgPool ?? createPool();
+// No throw when DATABASE_URL is missing: this module is imported while `next build`
+// collects routes, where the variable may legitimately be absent (e.g. a Docker image
+// build). pg connects lazily, so a missing URL only fails when a query actually runs.
+export const pool = globalForDb.pgPool ?? new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
 if (process.env.NODE_ENV !== "production") {
   globalForDb.pgPool = pool;
 }

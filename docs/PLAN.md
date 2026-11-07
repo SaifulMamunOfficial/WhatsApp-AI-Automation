@@ -39,7 +39,16 @@
 - [ ] ধাপ ১ বাকি যাচাই: Docker Desktop ইনস্টল করে `npm run db:up` ও `npm run db:migrate` চালানো।
 - [x] ধাপ ২: লগইন/লগআউট, DB session, admin/agent রোল, proxy সুরক্ষা, `scripts/create-user.ts`। টেস্ট (পাসওয়ার্ড, token, rate limit, role) ও build পাস।
 - [ ] ধাপ ২ বাকি যাচাই: Docker চালু করে migration (`0001`) চালানো, `create-user` দিয়ে admin বানিয়ে ব্রাউজারে লগইন/লগআউট দেখা।
-- [ ] ধাপ ৩ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
+- [x] ধাপ ৩: চ্যানেল-ভিত্তিক স্কিমা (channels, contacts + identities, conversations, messages, notes, tags, templates, automations, knowledge_base) আর AES-256-GCM token এনক্রিপশন (`src/lib/crypto.ts`)। টেস্ট পাস।
+- [ ] Docker ঠিক হলে একসাথে যাচাই: `db:migrate` (0000–0002), `create-user`, ব্রাউজারে লগইন/লগআউট। Docker Desktop ইনস্টল আছে কিন্তু engine চালু হচ্ছে না (ব্যবহারকারী পরে দেখবেন)।
+- [x] ধাপ ৪: WhatsApp webhook (GET verify, POST সই-যাচাই), parser (text, media caption, button/list reply, echo, status), sender (Graph API), ingest (idempotent)। ৪৮টি টেস্ট পাস, PGlite-এ migration সহ।
+- [ ] ধাপ ৪ বাকি: Meta App ও টেস্ট নম্বর তৈরির পর `cloudflared` দিয়ে আসল end-to-end পরীক্ষা (মেসেজ পাঠানো → inbox-এ দেখা, উত্তর পাঠানো)। Sender এখনো কোনো UI-তে যুক্ত নয় (ধাপ ৬)।
+- [x] ধাপ ৫: Messenger webhook (`/api/webhooks/messenger`), parser (text, attachment, postback, echo), sender (RESPONSE ও HUMAN_AGENT), echo-তে `app_id` দিয়ে নিজের/মানুষের মেসেজ আলাদা করা। ৬১টি টেস্ট পাস।
+- [ ] ধাপ ৫ বাকি: টেস্ট Page তৈরি ও Meta App-এ সাবস্ক্রাইব (`messages`, `message_echoes`, `messaging_postbacks`) করে আসল end-to-end পরীক্ষা; নমুনা payload আসল ধরা payload দিয়ে বদলানো (`tests/fixtures/messenger/README.md`)।
+- [x] ধাপ ৬: Inbox (তালিকা, থ্রেড, নোট, assign, বন্ধ/খোলা, bot আবার চালু, সার্চ, চ্যানেল/দায়িত্ব ফিল্টার, SSE real-time, উত্তর পাঠানো ২৪ ঘণ্টার নিয়ম মেনে)। ৮৩টি টেস্ট পাস। ব্রাউজারে PGlite ডেভ DB-তে যাচাই: লগইন (ধাপ ২), তালিকা, নোট, assign, উত্তর-ব্যর্থতার পথ (Meta-র আসল error ফেরত), ২৪ঘ/৭দিন নিয়ম।
+- [ ] ধাপ ৬ বাকি: আসল Meta টেস্ট নম্বর/পেজে উত্তর পাঠানোর end-to-end; ছবি/অডিও দেখানো (এখন শুধু `[ছবি]` লেবেল); পুরনো মেসেজ "আরও লোড" (এখন সর্বশেষ ২০০টি); Messenger কাস্টমারের নাম আনা।
+- [x] Docker যাচাই সম্পন্ন (২০২৬-১১-০৭): Postgres 16 container চালু (`127.0.0.1:5433`, কারণ মেশিনের নিজস্ব Postgres 5432-এ আছে), migration `0000`–`0002` প্রয়োগ (১৪টি টেবিল), `create-user` ও `seed-dev` সফল, ব্রাউজারে লগইন ও ইনবক্স আসল Postgres-এ কাজ করছে। প্রথম চেষ্টায় C: ড্রাইভ পূর্ণ থাকায় image pull ব্যর্থ হয়েছিল।
+- [ ] ধাপ ৭ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
 
 ## VPS deploy (ধাপ ৫)
 

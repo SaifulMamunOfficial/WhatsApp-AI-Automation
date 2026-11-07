@@ -1,0 +1,22 @@
+{
+  "object": "page",
+  "entry": [
+    {
+      "id": "110000000000001",
+      "time": 1457764197627,
+      "messaging": [
+        {
+          "sender": { "id": "110000000000001" },
+          "recipient": { "id": "5550001112223334" },
+          "timestamp": 1457764197627,
+          "message": {
+            "is_echo": true,
+            "app_id": 26390203743090,
+            "mid": "mid.echo:inbox0001",
+            "text": "জি, বলুন।"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -11,8 +11,9 @@ Saimum Shilpigosthi-র নিজস্ব CRM: WhatsApp Business (Coexistence) 
 ```bash
 npm install
 cp .env.example .env   # তারপর পাসওয়ার্ড ও secret বদলাও
-npm run db:up          # Docker-এ PostgreSQL
+npm run db:up          # Docker-এ PostgreSQL (পোর্ট POSTGRES_PORT, ডিফল্ট 5432)
 npm run db:migrate     # টেবিল তৈরি
+# Docker না থাকলে/চললে না: npm run dev:db  (PGlite, আলাদা টার্মিনালে)
 npm run dev            # http://localhost:3000
 ```
 

@@ -89,12 +89,12 @@ src/
 
 ## কাজের ক্রম (বর্তমান অবস্থা অনুযায়ী হালনাগাদ রাখো)
 
-1. [x] প্রজেক্টের কাঠামো: Next.js + Tailwind, Docker-এ Postgres, ORM, migration (কোড ও কনফিগ তৈরি; Docker ইনস্টল না থাকায় `db:migrate` চালিয়ে যাচাই বাকি)
-2. [x] লগইন ও রোল (admin, agent) (কোড তৈরি; DB না থাকায় আসল লগইন-লগআউট ফ্লো যাচাই বাকি)
-3. [ ] চ্যানেল-ভিত্তিক ডাটাবেস স্কিমা
-4. [ ] Channel adapter interface + WhatsApp webhook/sender (টেস্ট নম্বর)
-5. [ ] Messenger webhook/sender (টেস্ট পেজ)
-6. [ ] Inbox UI (real-time, assign, notes, channel filter)
+1. [x] প্রজেক্টের কাঠামো: Next.js + Tailwind, Docker-এ Postgres, ORM, migration (Docker Postgres 16-এ `db:migrate` চালিয়ে যাচাই করা, ২০২৬-১১-০৭)
+2. [x] লগইন ও রোল (admin, agent) (আসল Docker Postgres-এ ব্রাউজারে লগইন যাচাই করা)
+3. [x] চ্যানেল-ভিত্তিক ডাটাবেস স্কিমা (`src/db/schema/*`, migration `0000`–`0002` আসল Postgres-এ প্রয়োগ, ১৪টি টেবিল। `jobs` টেবিল pg-boss নিজে বানাবে, তাই এখানে নেই)
+4. [x] Channel adapter interface + WhatsApp webhook/sender (কোড ও টেস্ট সম্পূর্ণ; Meta-র আসল টেস্ট নম্বরে end-to-end পরীক্ষা বাকি, কারণ Meta App ও cloudflared এখনো তৈরি নয়)
+5. [x] Messenger webhook/sender (টেস্ট পেজ) (কোড ও টেস্ট সম্পূর্ণ; আসল টেস্ট পেজে end-to-end বাকি)
+6. [x] Inbox UI (real-time, assign, notes, channel filter) (ব্রাউজারে আসল ডাটাবেসে যাচাই করা; আসল Meta টেস্ট নম্বরে end-to-end বাকি। WhatsApp-এ ২৪ ঘণ্টার পরে template পাঠানো ধাপ ১২-তে)
 7. [ ] WhatsApp Coexistence: Embedded Signup + echo + history + contact sync
 8. [ ] Facebook Page সংযোগ (Facebook Login → page token → subscribe)
 9. [ ] Automation ইঞ্জিন (welcome, keyword menu, office hours, human-reply pause)
@@ -116,4 +116,35 @@ src/
 ## টেস্ট
 
 - Webhook parser, signature যাচাই, adapter আর automation নিয়মের জন্য unit test বাধ্যতামূলক (Vitest)।
-- Meta-র আসল webhook payload-এর নমুনা `tests/fixtures/`-এ রাখো।
+- Meta-র আসল webhook payload-এর নমুনা `tests/fixtures/`-এ রাখো (এখন `tests/fixtures/whatsapp/` — Meta ডক থেকে নেওয়া)।
+- DB-সংক্রান্ত টেস্ট `tests/helpers/test-db.ts`-এর PGlite (in-process Postgres) দিয়ে চলে; Docker লাগে না, আর `drizzle/` migration-গুলোও প্রতিবার চালিয়ে যাচাই হয়।
+
+## Webhook ও ingest (ধাপ ৪-এ সিদ্ধান্ত)
+
+- Route পাতলা: `src/app/api/webhooks/<channel>/route.ts` → `src/channels/webhook-handler.ts` (GET verify + POST: raw body-তে signature, parse, ingest, দ্রুত 200)।
+- `ingest` (`src/core/inbox/ingest.ts`) চ্যানেল-নিরপেক্ষ ও idempotent: `messages.external_id` unique; ব্যর্থ হলে 500 দেয় যাতে Meta আবার পাঠায়। ভারী কাজ (AI, history import) এখানে নয়, job-এ যাবে।
+- Phone-app echo (`smb_message_echoes`) → outbound/`phone_app` মেসেজ হিসেবে সেভ হয় এবং `conversations.bot_paused = true` করে।
+- Status শুধু সামনের দিকে যায় (sent → delivered → read); `failed` শুধু পৌঁছানোর আগে।
+- WhatsApp contact-এর পরিচয়: ফোন নম্বর (`from`); নম্বর লুকানো থাকলে BSUID (`from_user_id`)।
+- **Messenger echo**: `message_echoes`-এ `app_id` দেখে সূত্র ঠিক হয় (`src/channels/messenger/parser.ts`)। `app_id == META_APP_ID` মানে আমাদের নিজের API-র মেসেজ → `source=api`, bot থামে না। Page inbox (`26390203743090`) বা অন্য কোনো অ্যাপ → `page_inbox`, bot থামে। `META_APP_ID` না থাকলে নিরাপদ ডিফল্ট: সবই "মানুষের উত্তর" ধরে bot থামে। ধাপ ৬-এ উত্তর পাঠানোর কোড মেসেজ সেভ করার সময় `external_id` conflict সামলাবে, কারণ echo আমাদের নিজের সেভের আগে আসতে পারে।
+- **Messenger sender**: Page token `Authorization` header-এ (URL-এ নয়)। ২৪ ঘণ্টার মধ্যে `RESPONSE`; `humanAgent: true` হলে `MESSAGE_TAG` + `HUMAN_AGENT` (৭ দিন)। Bot কখনো `humanAgent` দেবে না, সেটা ওপরের স্তরে (ধাপ ৬/৯) বাধ্যতামূলক করতে হবে।
+- Messenger-এ delivery/read receipt সাবস্ক্রাইব করা নেই (read watermark-ভিত্তিক, মেসেজ-ভিত্তিক নয়)। কাস্টমারের নাম webhook-এ আসে না; পরে Graph API দিয়ে এনে `contact_identities.display_name`-এ বসাতে হবে (ধাপ ৮-এর কাছাকাছি)।
+## Inbox (ধাপ ৬-এ সিদ্ধান্ত)
+
+- একটাই পেজ `/inbox` (`src/app/(app)/inbox/`): বাঁয়ে তালিকা, ডানে কথোপকথন। ফিল্টার URL-এ (`?channel=&assigned=&status=&q=&c=<id>`), সব সার্ভার কম্পোনেন্ট; ক্লায়েন্ট কোড শুধু ফর্ম, `Realtime`, `MarkRead`, `ScrollToBottom`।
+- **উত্তর পাঠানো** `src/core/inbox/send.ts` (`sendReply`): চ্যানেল-অনুযায়ী ২৪ ঘণ্টার নিয়ম `window.ts`-এ (WhatsApp: ২৪ঘ পরে template লাগে; Messenger: মানুষ ৭ দিন পর্যন্ত `HUMAN_AGENT`, **bot কখনো নয়**)। আগে `pending` সারি, পরে provider-এ পাঠানো; ব্যর্থ হলে `failed` + কারণ। echo আগে এলে সেই সারির সাথে মিশে যায়। মানুষ উত্তর দিলে `bot_paused = true`।
+- **Real-time**: `src/core/inbox/events.ts` in-process event bus → SSE `/api/inbox/stream` → ক্লায়েন্টে `router.refresh()`। শুধু conversation id যায়, ডেটা নয়। একটাই Node process ধরে নেওয়া; একাধিক instance হলে Postgres LISTEN/NOTIFY-তে সরাতে হবে (একই interface)।
+- **অনুমতি**: প্রতিটা Server Action `requireUser()` ও zod দিয়ে ইনপুট যাচাই করে। Admin যে কাউকে assign করতে পারে; agent শুধু নিজের জন্য নিতে বা নিজেরটা ছেড়ে দিতে পারে (`mutations.ts`, টেস্ট করা)।
+- **Cache Components-এর শিক্ষা**: সময়-নির্ভর কোড (`new Date()`) request-time-এ চালাতে `await connection()` লাগে (`getCurrentUser`-এ দেওয়া আছে); না দিলে dev-এ validation ত্রুটি আসে এবং Suspense-এর ভেতরের অংশ (যেমন `MarkRead`) কখনো কখনো কাজ করে না। React 19 `<form action>` শেষে ফর্ম রিসেট করে, তাই সার্ভারের মানে বদলানো uncontrolled ইনপুটে `key` দিতে হয়।
+- **Browser pane লুকানো থাকলে** Suspense-এর reveal (`requestAnimationFrame`) আটকে যায়: পেজ "লোড হচ্ছে…"-তে থেকে যেতে পারে। এটা অ্যাপের ত্রুটি নয়; পরীক্ষার সময় pane দৃশ্যমান রাখো।
+
+## Docker ছাড়া ডেভ ডাটাবেস
+
+- `npm run dev:db` PGlite (আসল Postgres, WASM) চালায় `.env`-এর `DATABASE_URL`-এর পোর্টে (ওভাররাইড: `DEV_DB_PORT`); ডেটা `.pglite/`-এ (git-এ যায় না)। প্রথমবার `npm run db:seed-dev` ও `scripts/create-user.ts` দরকার।
+- **এই মেশিনে (Saiful-এর) একটা নিজস্ব Postgres 5432 পোর্টে চলে** (Windows service, `crm` রোল নেই), তাই `.env`-এ `POSTGRES_PORT=5433` ও `DATABASE_URL`-এ `:5433` রাখা আছে; Docker ও `dev:db` দুটোই 5433 ব্যবহার করে। ওই Postgres-এ হাত দেওয়া যাবে না। `role "crm" does not exist` ত্রুটি মানে অ্যাপ ভুল Postgres-এ (5432) যাচ্ছে।
+- **Docker এখন কাজ করছে** (২০২৬-১১-০৭): container `saimum-crm-db-1` (postgres:16-alpine) `127.0.0.1:5433`-এ। `docker` কমান্ড PATH-এ না থাকলে পুরো পাথ: `C:\Users\User\AppData\Local\Programs\DockerDesktop\resources\bin`। Docker Desktop-এর ডিস্ক ইমেজ C: ড্রাইভে থাকে; **C: পূর্ণ হলে** Docker "unable to start" বলে ও image pull `input/output error` দেয় (এটাই আগে ঘটেছিল)। তখন C: খালি করো বা Docker Settings → Resources → Disk image location E: ড্রাইভে সরাও। Docker না চললে `dev:db` ব্যবহার করা যায়।
+- ডেভ লগইন (শুধু লোকাল, আসল ইউজার নয়): `admin@dev.local` ও `agent@dev.local`, পাসওয়ার্ড `dev-pass-12345` (`scripts/create-user.ts` দিয়ে বসানো)। আসল admin বানিয়ে এগুলো মুছে ফেলো।
+- `npm run db:seed-dev` দুই টেস্ট চ্যানেল ও নমুনা কথোপকথন বসায় (আসল চ্যানেল থাকলে অস্বীকার করে)। Token নকল, তাই উত্তর পাঠালে Meta `Invalid OAuth access token` দেবে।
+- শুধু ডেভেলপমেন্টের জন্য; production-এ Docker Compose-এর আসল PostgreSQL।
+
+- `src/db/index.ts` `DATABASE_URL` না থাকলেও import-এ throw করে না (Docker image build-এর জন্য)।

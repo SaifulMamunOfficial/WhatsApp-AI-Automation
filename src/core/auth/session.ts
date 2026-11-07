@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions, users } from "@/db/schema";
@@ -46,6 +47,9 @@ export async function destroySession(): Promise<void> {
 
 /** Resolves the logged-in user from the cookie, or null. Memoized per request. */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
+  // Session expiry depends on the current time, so this must never run during
+  // prerendering. (Cache Components rejects `new Date()` there.)
+  await connection();
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
