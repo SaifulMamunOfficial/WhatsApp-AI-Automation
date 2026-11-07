@@ -45,3 +45,6 @@ next-env.d.ts
 
 # PGlite dev database
 .pglite
+
+# local tool config
+.claude/
