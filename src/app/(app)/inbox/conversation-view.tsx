@@ -102,6 +102,7 @@ export function ConversationView({
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <span className="text-zinc-500">{c.identityExternalId}</span>
+          <Link href={`/contacts/${c.contactId}`} className="underline">কন্টাক্ট দেখুন</Link>
 
           <form action={assignAction} className="flex items-center gap-1">
             <input type="hidden" name="conversationId" value={c.id} />

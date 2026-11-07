@@ -23,6 +23,9 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
           <Link href="/inbox" className="font-semibold">
             Saimum CRM
           </Link>
+          <Link href="/contacts" className="text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400">
+            কন্টাক্ট
+          </Link>
           {user.role === "admin" && (
             <Link href="/settings/channels" className="text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400">
               চ্যানেল
