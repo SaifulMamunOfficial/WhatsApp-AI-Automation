@@ -1,7 +1,15 @@
-import { boolean, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 export const channelType = pgEnum("channel_type", ["whatsapp", "messenger"]);
 export const channelStatus = pgEnum("channel_status", ["pending", "active", "disconnected"]);
+export const historySyncStatus = pgEnum("history_sync_status", [
+  "not_requested",
+  "requested",
+  "in_progress",
+  "complete",
+  "declined",
+  "failed",
+]);
 
 // One row per WhatsApp number and per Facebook Page.
 export const channels = pgTable(
@@ -27,3 +35,24 @@ export const channels = pgTable(
   },
   (t) => [unique("channels_type_external_id_unique").on(t.type, t.externalId)],
 );
+
+// WhatsApp Coexistence onboarding state. Meta allows each sync to be requested ONCE per
+// onboarding (within 24h of it); a second request needs offboarding and a new signup.
+// So we record when each request was made and never repeat it.
+export const whatsappSyncState = pgTable("whatsapp_sync_state", {
+  channelId: uuid("channel_id")
+    .primaryKey()
+    .references(() => channels.id, { onDelete: "cascade" }),
+  onboardedAt: timestamp("onboarded_at", { withTimezone: true }).notNull().defaultNow(),
+  contactsRequestedAt: timestamp("contacts_requested_at", { withTimezone: true }),
+  contactsRequestId: text("contacts_request_id"),
+  historyRequestedAt: timestamp("history_requested_at", { withTimezone: true }),
+  historyRequestId: text("history_request_id"),
+  historyStatus: historySyncStatus("history_status").notNull().default("not_requested"),
+  // 0-100, as reported by Meta in history chunks.
+  historyProgress: integer("history_progress").notNull().default(0),
+  historyMessageCount: integer("history_message_count").notNull().default(0),
+  contactsSyncedCount: integer("contacts_synced_count").notNull().default(0),
+  lastError: text("last_error"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

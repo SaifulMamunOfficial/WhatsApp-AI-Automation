@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { logout } from "@/core/auth/actions";
 import { requireUser } from "@/core/auth/dal";
@@ -18,7 +19,16 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <span className="font-semibold">Saimum CRM</span>
+        <nav className="flex items-center gap-4 text-sm">
+          <Link href="/inbox" className="font-semibold">
+            Saimum CRM
+          </Link>
+          {user.role === "admin" && (
+            <Link href="/settings/channels" className="text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400">
+              চ্যানেল
+            </Link>
+          )}
+        </nav>
         <div className="flex items-center gap-3 text-sm">
           <span>
             {user.name} ({user.role === "admin" ? "অ্যাডমিন" : "এজেন্ট"})

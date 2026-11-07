@@ -1,4 +1,11 @@
-import type { DeliveryStatus, NormalizedMessage, StatusUpdate, WebhookEvents } from "../types";
+import type {
+  DeliveryStatus,
+  HistoryChunk,
+  HistoryThread,
+  NormalizedMessage,
+  StatusUpdate,
+  WebhookEvents,
+} from "../types";
 
 // Parses WhatsApp Cloud API webhooks (object: whatsapp_business_account).
 // Defensive by design: unknown shapes are skipped, never thrown on, so a new Meta
@@ -60,11 +67,116 @@ export function parseWhatsAppWebhook(payload: unknown): WebhookEvents {
         parseStatuses(value, channelExternalId, out);
       } else if (field === "smb_message_echoes") {
         parseEchoes(value, channelExternalId, out);
+      } else if (field === "history") {
+        parseHistory(value, channelExternalId, out);
+      } else if (field === "smb_app_state_sync") {
+        parseStateSync(value, channelExternalId, out);
       }
-      // smb_app_state_sync and history are handled in step 7 (Coexistence).
     }
   }
   return out;
+}
+
+// --- WhatsApp Coexistence -------------------------------------------------------------
+
+const HISTORY_STATUS: Record<string, NormalizedMessage["status"]> = {
+  sent: "sent",
+  delivered: "delivered",
+  read: "read",
+  played: "read",
+  pending: "pending",
+  error: "failed",
+};
+
+/** Error code Meta sends when the business declines to share chat history. */
+export const HISTORY_DECLINED_CODE = 2593109;
+
+function parseHistory(value: Obj, channelExternalId: string, out: WebhookEvents) {
+  for (const h of arr(value.history)) {
+    if (!isObj(h)) continue;
+    const meta = isObj(h.metadata) ? h.metadata : {};
+    const chunk: HistoryChunk = {
+      channelType: "whatsapp",
+      channelExternalId,
+      phase: Number(meta.phase) || 0,
+      chunkOrder: Number(meta.chunk_order) || 0,
+      progress: Number(meta.progress) || 0,
+      threads: [],
+    };
+
+    const firstError = arr(h.errors).find(isObj);
+    if (firstError) {
+      const code = firstError.code !== undefined ? Number(firstError.code) : undefined;
+      chunk.error = {
+        code,
+        message: str(firstError.message) ?? str(firstError.title) ?? "history sync error",
+        declined: code === HISTORY_DECLINED_CODE,
+      };
+    }
+
+    for (const t of arr(h.threads)) {
+      if (!isObj(t)) continue;
+      const ctx = isObj(t.context) ? t.context : {};
+      // The thread id is the customer's phone number; fall back to the BSUID.
+      const contactExternalId = str(t.id) ?? str(ctx.wa_id) ?? str(ctx.user_id);
+      if (!contactExternalId) continue;
+
+      const thread: HistoryThread = { contactExternalId, messages: [] };
+      for (const m of arr(t.messages)) {
+        if (!isObj(m)) continue;
+        const id = str(m.id);
+        const type = str(m.type);
+        if (!id || !type) continue;
+
+        // `from` is the customer for messages they sent, and the business for ours.
+        const from = str(m.from);
+        const fromCustomer = !!from && [contactExternalId, str(ctx.wa_id), str(ctx.user_id)].includes(from);
+        const status = isObj(m.history_context) ? str(m.history_context.status) : undefined;
+
+        thread.messages.push({
+          channelType: "whatsapp",
+          channelExternalId,
+          externalId: id,
+          contactExternalId,
+          direction: fromCustomer ? "inbound" : "outbound",
+          source: "history",
+          type,
+          text: extractText(m),
+          timestamp: toDate(m.timestamp),
+          status: status ? HISTORY_STATUS[status] : undefined,
+          raw: m,
+        });
+      }
+      chunk.threads.push(thread);
+    }
+
+    (out.history ??= []).push(chunk);
+  }
+}
+
+// Contacts added/removed in the Business App. Meta documents only "add" (which also covers
+// edits) and "remove".
+function parseStateSync(value: Obj, channelExternalId: string, out: WebhookEvents) {
+  for (const s of arr(value.state_sync)) {
+    if (!isObj(s) || s.type !== "contact" || !isObj(s.contact)) continue;
+    const action = str(s.action);
+    if (action !== "add" && action !== "remove") continue;
+
+    const c = s.contact;
+    const contactExternalId = str(c.phone_number) ?? str(c.user_id);
+    if (!contactExternalId) continue;
+
+    const meta = isObj(s.metadata) ? s.metadata : {};
+    (out.contactSync ??= []).push({
+      channelType: "whatsapp",
+      channelExternalId,
+      action,
+      contactExternalId,
+      fullName: str(c.full_name),
+      firstName: str(c.first_name),
+      timestamp: toDate(meta.timestamp),
+    });
+  }
 }
 
 function parseInbound(value: Obj, channelExternalId: string, out: WebhookEvents) {

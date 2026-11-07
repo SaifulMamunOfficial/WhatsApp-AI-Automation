@@ -55,7 +55,12 @@ export async function handleDelivery(request: Request, deps: WebhookDeps): Promi
   }
 
   const events = deps.adapter.parseWebhook(payload);
-  if (events.messages.length === 0 && events.statuses.length === 0) {
+  const hasWork =
+    events.messages.length > 0 ||
+    events.statuses.length > 0 ||
+    (events.history?.length ?? 0) > 0 ||
+    (events.contactSync?.length ?? 0) > 0;
+  if (!hasWork) {
     return new Response("OK", { status: 200 }); // nothing we handle (yet); acknowledge so Meta stops retrying
   }
 

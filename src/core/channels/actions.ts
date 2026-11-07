@@ -1,0 +1,64 @@
+"use server";
+
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { requireRole } from "@/core/auth/dal";
+import { db } from "@/db";
+import { completeCoexistenceOnboarding, graphOnboardingApi, requestSyncOnce, type OnboardingResult } from "./onboarding";
+import { isRealChannelConnectAllowed } from "./config";
+import { eq } from "drizzle-orm";
+import { whatsappSyncState } from "@/db/schema";
+
+// Connecting a REAL WhatsApp number is a go-live step (CLAUDE.md step 14). It needs an admin
+// AND the explicit ALLOW_REAL_CHANNEL_CONNECT=true switch, so it cannot happen by accident
+// while developing with the Meta test number.
+
+const connectSchema = z.object({
+  code: z.string().min(1).max(2048),
+  wabaId: z.string().regex(/^\d+$/),
+  phoneNumberId: z.string().regex(/^\d+$/).optional(),
+});
+
+export type ConnectResult = OnboardingResult | { ok: false; code: "forbidden" | "not_configured"; error: string };
+
+export async function connectWhatsAppAction(raw: unknown): Promise<ConnectResult> {
+  await requireRole("admin");
+
+  if (!isRealChannelConnectAllowed()) {
+    return { ok: false, code: "forbidden", error: "আসল নম্বর সংযুক্ত করা বন্ধ আছে (ALLOW_REAL_CHANNEL_CONNECT)। এটা go-live ধাপে চালু করতে হয়।" };
+  }
+  const appId = process.env.META_APP_ID;
+  const appSecret = process.env.META_APP_SECRET;
+  if (!appId || !appSecret) {
+    return { ok: false, code: "not_configured", error: "META_APP_ID বা META_APP_SECRET সেট করা নেই।" };
+  }
+
+  const parsed = connectSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, code: "invalid_input", error: "অনবোর্ডিংয়ের তথ্য ভুল।" };
+
+  const result = await completeCoexistenceOnboarding(db, graphOnboardingApi({ appId, appSecret }), parsed.data);
+  revalidatePath("/settings/channels");
+  return result;
+}
+
+/** Retries a sync request that failed (only possible within 24h of onboarding, and only once it succeeds). */
+export async function retrySyncAction(formData: FormData): Promise<void> {
+  await requireRole("admin");
+  const channelId = z.uuid().safeParse(formData.get("channelId"));
+  const type = z.enum(["smb_app_state_sync", "history"]).safeParse(formData.get("syncType"));
+  if (!channelId.success || !type.success) return;
+
+  const appId = process.env.META_APP_ID;
+  const appSecret = process.env.META_APP_SECRET;
+  if (!appId || !appSecret) return;
+
+  const outcome = await requestSyncOnce(db, graphOnboardingApi({ appId, appSecret }), channelId.data, type.data);
+  if (outcome === "requested") {
+    // Clear the note once nothing is left to retry.
+    const [s] = await db.select().from(whatsappSyncState).where(eq(whatsappSyncState.channelId, channelId.data)).limit(1);
+    if (s?.contactsRequestedAt && s?.historyRequestedAt) {
+      await db.update(whatsappSyncState).set({ lastError: null }).where(eq(whatsappSyncState.channelId, channelId.data));
+    }
+  }
+  revalidatePath("/settings/channels");
+}

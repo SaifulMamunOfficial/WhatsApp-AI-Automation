@@ -95,7 +95,7 @@ src/
 4. [x] Channel adapter interface + WhatsApp webhook/sender (কোড ও টেস্ট সম্পূর্ণ; Meta-র আসল টেস্ট নম্বরে end-to-end পরীক্ষা বাকি, কারণ Meta App ও cloudflared এখনো তৈরি নয়)
 5. [x] Messenger webhook/sender (টেস্ট পেজ) (কোড ও টেস্ট সম্পূর্ণ; আসল টেস্ট পেজে end-to-end বাকি)
 6. [x] Inbox UI (real-time, assign, notes, channel filter) (ব্রাউজারে আসল ডাটাবেসে যাচাই করা; আসল Meta টেস্ট নম্বরে end-to-end বাকি। WhatsApp-এ ২৪ ঘণ্টার পরে template পাঠানো ধাপ ১২-তে)
-7. [ ] WhatsApp Coexistence: Embedded Signup + echo + history + contact sync
+7. [x] WhatsApp Coexistence: Embedded Signup + echo + history + contact sync (কোড, টেস্ট ও সই-করা webhook দিয়ে Docker Postgres-এ যাচাই সম্পূর্ণ; আসল Meta App/নম্বরে Embedded Signup বাকি, `ALLOW_REAL_CHANNEL_CONNECT=false` দিয়ে বন্ধ রাখা। `/register` কোথাও নেই। history/contact sync Meta ডক থেকে বানানো fixture-এ পরীক্ষিত, আসল payload ধরা বাকি)
 8. [ ] Facebook Page সংযোগ (Facebook Login → page token → subscribe)
 9. [ ] Automation ইঞ্জিন (welcome, keyword menu, office hours, human-reply pause)
 10. [ ] AI bot + knowledge base

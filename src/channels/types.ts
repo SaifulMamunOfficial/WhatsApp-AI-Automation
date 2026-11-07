@@ -27,6 +27,8 @@ export interface NormalizedMessage {
   text?: string;
   /** Provider timestamp. */
   timestamp: Date;
+  /** Delivery state when the provider reports it with the message (history import). Defaults to "sent". */
+  status?: DeliveryStatus | "pending";
   /** Raw provider message object for debugging; never shown to users. */
   raw?: unknown;
 }
@@ -41,9 +43,46 @@ export interface StatusUpdate {
   error?: string;
 }
 
+/** One thread of a WhatsApp Coexistence history chunk (a past 1:1 chat). */
+export interface HistoryThread {
+  /** The customer: phone number, or business-scoped user id when the number is hidden. */
+  contactExternalId: string;
+  contactName?: string;
+  messages: NormalizedMessage[];
+}
+
+/**
+ * A piece of the one-time history import. Chunks can arrive out of order and in several
+ * phases (0: day 0-1, 1: day 1-90, 2: day 90-180); progress 100 means the import is done.
+ */
+export interface HistoryChunk {
+  channelType: ChannelType;
+  channelExternalId: string;
+  phase: number;
+  chunkOrder: number;
+  progress: number;
+  threads: HistoryThread[];
+  /** Set when the business declined to share history (Meta error 2593109) or Meta reported a failure. */
+  error?: { code?: number; message: string; declined: boolean };
+}
+
+/** A contact added/removed in the WhatsApp Business App on the phone (Coexistence state sync). */
+export interface ContactSyncEvent {
+  channelType: ChannelType;
+  channelExternalId: string;
+  action: "add" | "remove";
+  contactExternalId: string;
+  fullName?: string;
+  firstName?: string;
+  timestamp: Date;
+}
+
 export interface WebhookEvents {
   messages: NormalizedMessage[];
   statuses: StatusUpdate[];
+  /** Present only for WhatsApp Coexistence webhooks. */
+  history?: HistoryChunk[];
+  contactSync?: ContactSyncEvent[];
 }
 
 export interface SendTextInput {

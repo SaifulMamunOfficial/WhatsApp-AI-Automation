@@ -3,6 +3,8 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { NormalizedMessage, StatusUpdate, WebhookEvents } from "@/channels/types";
 import { publishInboxEvent } from "./events";
+import { ingestContactSync } from "@/core/contacts/sync";
+import { ingestHistoryChunk } from "./history";
 
 // Channel-neutral ingestion: turns normalized webhook events into contacts,
 // conversations and messages. It must be fast (webhooks answer 200 quickly) and
@@ -15,6 +17,10 @@ export interface IngestResult {
   duplicates: number;
   unknownChannel: number;
   statusesApplied: number;
+  /** Coexistence: past messages imported from history chunks. */
+  historyMessages: number;
+  /** Coexistence: contacts added from the phone's address book. */
+  contactsSynced: number;
   failed: number;
 }
 
@@ -28,7 +34,15 @@ function previewOf(m: NormalizedMessage): string {
 }
 
 export async function ingestEvents(db: Db, events: WebhookEvents): Promise<IngestResult> {
-  const result: IngestResult = { stored: 0, duplicates: 0, unknownChannel: 0, statusesApplied: 0, failed: 0 };
+  const result: IngestResult = {
+    stored: 0,
+    duplicates: 0,
+    unknownChannel: 0,
+    statusesApplied: 0,
+    historyMessages: 0,
+    contactsSynced: 0,
+    failed: 0,
+  };
   let firstError: unknown;
 
   // Oldest first so conversation previews and "last message" end up correct.
@@ -53,6 +67,24 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
   for (const s of events.statuses) {
     try {
       result.statusesApplied += await applyStatus(db, s);
+    } catch (err) {
+      result.failed++;
+      firstError ??= err;
+    }
+  }
+
+  // WhatsApp Coexistence: contacts first, so history threads attach to named contacts.
+  if (events.contactSync?.length) {
+    try {
+      result.contactsSynced += await ingestContactSync(db, events.contactSync);
+    } catch (err) {
+      result.failed++;
+      firstError ??= err;
+    }
+  }
+  for (const chunk of events.history ?? []) {
+    try {
+      result.historyMessages += await ingestHistoryChunk(db, chunk);
     } catch (err) {
       result.failed++;
       firstError ??= err;
@@ -108,9 +140,22 @@ async function ingestMessage(
   });
 }
 
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-async function ensureIdentity(tx: Tx, channelId: string, m: NormalizedMessage) {
+function ensureIdentity(tx: Tx, channelId: string, m: NormalizedMessage) {
+  return ensureIdentityByKey(tx, channelId, m.contactExternalId, m.contactName);
+}
+
+/**
+ * Finds or creates the contact + identity for a customer on a channel. Safe against
+ * concurrent creation. Also fills in a name the contact never had.
+ */
+export async function ensureIdentityByKey(
+  tx: Tx,
+  channelId: string,
+  contactExternalId: string,
+  contactName?: string,
+) {
   const find = () =>
     tx
       .select({ id: schema.contactIdentities.id, contactId: schema.contactIdentities.contactId })
@@ -118,7 +163,7 @@ async function ensureIdentity(tx: Tx, channelId: string, m: NormalizedMessage) {
       .where(
         and(
           eq(schema.contactIdentities.channelId, channelId),
-          eq(schema.contactIdentities.externalId, m.contactExternalId),
+          eq(schema.contactIdentities.externalId, contactExternalId),
         ),
       )
       .limit(1);
@@ -128,15 +173,15 @@ async function ensureIdentity(tx: Tx, channelId: string, m: NormalizedMessage) {
   if (!identity) {
     const [contact] = await tx
       .insert(schema.contacts)
-      .values({ name: m.contactName ?? null })
+      .values({ name: contactName ?? null })
       .returning({ id: schema.contacts.id });
     const created = await tx
       .insert(schema.contactIdentities)
       .values({
         contactId: contact.id,
         channelId,
-        externalId: m.contactExternalId,
-        displayName: m.contactName ?? null,
+        externalId: contactExternalId,
+        displayName: contactName ?? null,
       })
       .onConflictDoNothing()
       .returning({ id: schema.contactIdentities.id, contactId: schema.contactIdentities.contactId });
@@ -148,15 +193,15 @@ async function ensureIdentity(tx: Tx, channelId: string, m: NormalizedMessage) {
       await tx.delete(schema.contacts).where(eq(schema.contacts.id, contact.id));
       [identity] = await find();
     }
-  } else if (m.contactName) {
+  } else if (contactName) {
     // Keep names fresh, and fill a contact's name if it never had one.
     await tx
       .update(schema.contactIdentities)
-      .set({ displayName: m.contactName })
+      .set({ displayName: contactName })
       .where(eq(schema.contactIdentities.id, identity.id));
     await tx
       .update(schema.contacts)
-      .set({ name: m.contactName, updatedAt: new Date() })
+      .set({ name: contactName, updatedAt: new Date() })
       .where(and(eq(schema.contacts.id, identity.contactId), sql`${schema.contacts.name} is null`));
   }
 

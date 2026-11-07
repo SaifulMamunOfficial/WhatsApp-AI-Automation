@@ -48,7 +48,9 @@
 - [x] ধাপ ৬: Inbox (তালিকা, থ্রেড, নোট, assign, বন্ধ/খোলা, bot আবার চালু, সার্চ, চ্যানেল/দায়িত্ব ফিল্টার, SSE real-time, উত্তর পাঠানো ২৪ ঘণ্টার নিয়ম মেনে)। ৮৩টি টেস্ট পাস। ব্রাউজারে PGlite ডেভ DB-তে যাচাই: লগইন (ধাপ ২), তালিকা, নোট, assign, উত্তর-ব্যর্থতার পথ (Meta-র আসল error ফেরত), ২৪ঘ/৭দিন নিয়ম।
 - [ ] ধাপ ৬ বাকি: আসল Meta টেস্ট নম্বর/পেজে উত্তর পাঠানোর end-to-end; ছবি/অডিও দেখানো (এখন শুধু `[ছবি]` লেবেল); পুরনো মেসেজ "আরও লোড" (এখন সর্বশেষ ২০০টি); Messenger কাস্টমারের নাম আনা।
 - [x] Docker যাচাই সম্পন্ন (২০২৬-১১-০৭): Postgres 16 container চালু (`127.0.0.1:5433`, কারণ মেশিনের নিজস্ব Postgres 5432-এ আছে), migration `0000`–`0002` প্রয়োগ (১৪টি টেবিল), `create-user` ও `seed-dev` সফল, ব্রাউজারে লগইন ও ইনবক্স আসল Postgres-এ কাজ করছে। প্রথম চেষ্টায় C: ড্রাইভ পূর্ণ থাকায় image pull ব্যর্থ হয়েছিল।
-- [ ] ধাপ ৭ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
+- [x] ধাপ ৭: history import (source=history, unread/bot-pause নেই, পুরনো চ্যাট "বন্ধ" অবস্থায়), contact sync (add নাম বসায়, remove কিছু মোছে না), Embedded Signup সার্ভার-অংশ (token exchange, is_on_biz_app যাচাই, webhook subscribe, smb_app_data একবারই), অ্যাডমিন পেজ `/settings/channels`। migration `0003`। ১১৬টি টেস্ট পাস।
+- [ ] ধাপ ৭ বাকি: আসল Meta App + Tech Provider সেটআপের পর Embedded Signup-এর end-to-end (FB SDK অংশ এখনো ব্রাউজারে পরীক্ষিত নয়); আসল history/state_sync payload ধরে fixture বদলানো; media (`media_placeholder`) পরে আলাদা webhook-এ আসে, এখনো ধরা হয়নি।
+- [ ] ধাপ ৮ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
 
 ## VPS deploy (ধাপ ৫)
 

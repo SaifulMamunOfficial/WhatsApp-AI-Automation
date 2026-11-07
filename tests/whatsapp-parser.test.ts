@@ -140,3 +140,58 @@ describe("parseWhatsAppWebhook", () => {
     expect(parseWhatsAppWebhook(p).messages).toEqual([]);
   });
 });
+
+describe("parseWhatsAppWebhook — Coexistence", () => {
+  it("parses a history chunk: phase, order, progress, threads, direction, status", () => {
+    const { messages, statuses, history } = parseWhatsAppWebhook(fixture("history-chunk.json"));
+    expect(messages).toEqual([]); // history never goes through the live-message path
+    expect(statuses).toEqual([]);
+    expect(history).toHaveLength(1);
+
+    const chunk = history![0];
+    expect(chunk).toMatchObject({ channelExternalId: "106540352242922", phase: 0, chunkOrder: 1, progress: 55 });
+    expect(chunk.error).toBeUndefined();
+    expect(chunk.threads.map((t) => t.contactExternalId)).toEqual(["16505551234", "16505559999"]);
+
+    const [customer1, business1, media] = chunk.threads[0].messages;
+    expect(customer1).toMatchObject({ direction: "inbound", source: "history", text: "Hi, is the kit in stock?", status: "read", externalId: "wamid.HIST.CUSTOMER.1" });
+    expect(business1).toMatchObject({ direction: "outbound", source: "history", status: "delivered" });
+    expect(media).toMatchObject({ type: "media_placeholder", direction: "inbound", text: undefined });
+    expect(chunk.threads[1].messages[0]).toMatchObject({ direction: "outbound", status: "failed" }); // history "error"
+    expect(customer1.timestamp.toISOString()).toBe("2025-06-08T16:26:40.000Z");
+  });
+
+  it("reports a declined history sync (error 2593109) with no messages", () => {
+    const { history } = parseWhatsAppWebhook(fixture("history-declined.json"));
+    expect(history).toHaveLength(1);
+    expect(history![0].threads).toEqual([]);
+    expect(history![0].error).toMatchObject({ code: 2593109, declined: true });
+  });
+
+  it("flags other history errors as not declined", () => {
+    const { history } = parseWhatsAppWebhook({
+      object: "whatsapp_business_account",
+      entry: [{ changes: [{ field: "history", value: { metadata: { phone_number_id: "P" }, history: [{ errors: [{ code: 1, message: "boom" }] }] } }] }],
+    });
+    expect(history![0].error).toEqual({ code: 1, message: "boom", declined: false });
+  });
+
+  it("parses contact add/remove from smb_app_state_sync", () => {
+    const { contactSync, messages } = parseWhatsAppWebhook(fixture("state-sync-contacts.json"));
+    expect(messages).toEqual([]);
+    expect(contactSync).toHaveLength(2);
+    expect(contactSync![0]).toMatchObject({ action: "add", contactExternalId: "16505551234", fullName: "Sheena Nelson", firstName: "Sheena", channelExternalId: "106540352242922" });
+    expect(contactSync![1]).toMatchObject({ action: "remove", contactExternalId: "16505559999", fullName: undefined });
+  });
+
+  it("ignores unknown state_sync types/actions and malformed history without throwing", () => {
+    const wrapField = (field: string, value: unknown) => ({
+      object: "whatsapp_business_account",
+      entry: [{ changes: [{ field, value: { metadata: { phone_number_id: "P" }, ...(value as object) } }] }],
+    });
+    const odd = parseWhatsAppWebhook(wrapField("smb_app_state_sync", { state_sync: [{ type: "setting" }, { type: "contact", action: "edit", contact: { phone_number: "1" } }, { type: "contact", action: "add", contact: {} }, null, 5] }));
+    expect(odd.contactSync).toBeUndefined();
+    const bad = parseWhatsAppWebhook(wrapField("history", { history: [null, 7, { threads: [null, { messages: [] }, { id: "1", messages: [null, { id: "x" }] }] }] }));
+    expect(bad.history![0].threads).toEqual([{ contactExternalId: "1", messages: [] }]);
+  });
+});
