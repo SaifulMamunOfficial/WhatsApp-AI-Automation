@@ -6,6 +6,7 @@ import { requireRole } from "@/core/auth/dal";
 import { db } from "@/db";
 import { completeCoexistenceOnboarding, graphOnboardingApi, requestSyncOnce, type OnboardingResult } from "./onboarding";
 import { isRealChannelConnectAllowed } from "./config";
+import { connectMessengerPage, graphPageApi, listPagesForPicker, type PageChoice, type PageConnectResult } from "./page-onboarding";
 import { eq } from "drizzle-orm";
 import { whatsappSyncState } from "@/db/schema";
 
@@ -61,4 +62,48 @@ export async function retrySyncAction(formData: FormData): Promise<void> {
     }
   }
   revalidatePath("/settings/channels");
+}
+
+// ---- Facebook Pages (Messenger) -------------------------------------------------------
+
+const pageConnectSchema = z.object({
+  userToken: z.string().min(1).max(4096),
+  pageId: z.string().regex(/^\d+$/),
+  isTest: z.boolean(),
+});
+
+function metaCreds() {
+  const appId = process.env.META_APP_ID;
+  const appSecret = process.env.META_APP_SECRET;
+  return appId && appSecret ? { appId, appSecret } : null;
+}
+
+/** Pages the logged-in Facebook user manages. Returns names and ids only, never tokens. */
+export async function listPagesAction(userToken: unknown): Promise<{ ok: true; pages: PageChoice[] } | { ok: false; error: string }> {
+  await requireRole("admin");
+  const creds = metaCreds();
+  if (!creds) return { ok: false, error: "META_APP_ID বা META_APP_SECRET সেট করা নেই।" };
+  const token = z.string().min(1).max(4096).safeParse(userToken);
+  if (!token.success) return { ok: false, error: "Facebook লগইনের তথ্য ভুল।" };
+  return listPagesForPicker(graphPageApi(creds), token.data);
+}
+
+/**
+ * Connects a Facebook Page. A page marked as test can be connected any time; a real page
+ * needs the ALLOW_REAL_CHANNEL_CONNECT switch (go-live step, CLAUDE.md step 14).
+ */
+export async function connectPageAction(raw: unknown): Promise<PageConnectResult | { ok: false; code: "forbidden" | "not_configured"; error: string }> {
+  await requireRole("admin");
+  const creds = metaCreds();
+  if (!creds) return { ok: false, code: "not_configured", error: "META_APP_ID বা META_APP_SECRET সেট করা নেই।" };
+
+  const parsed = pageConnectSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, code: "invalid_input", error: "পেজের তথ্য ভুল।" };
+  if (!parsed.data.isTest && !isRealChannelConnectAllowed()) {
+    return { ok: false, code: "forbidden", error: "আসল পেজ সংযুক্ত করা বন্ধ আছে (ALLOW_REAL_CHANNEL_CONNECT)। টেস্ট পেজ হলে 'টেস্ট পেজ' টিক দিন।" };
+  }
+
+  const result = await connectMessengerPage(db, graphPageApi(creds), parsed.data);
+  revalidatePath("/settings/channels");
+  return result;
 }

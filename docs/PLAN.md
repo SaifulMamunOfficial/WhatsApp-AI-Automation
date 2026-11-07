@@ -50,7 +50,9 @@
 - [x] Docker যাচাই সম্পন্ন (২০২৬-১১-০৭): Postgres 16 container চালু (`127.0.0.1:5433`, কারণ মেশিনের নিজস্ব Postgres 5432-এ আছে), migration `0000`–`0002` প্রয়োগ (১৪টি টেবিল), `create-user` ও `seed-dev` সফল, ব্রাউজারে লগইন ও ইনবক্স আসল Postgres-এ কাজ করছে। প্রথম চেষ্টায় C: ড্রাইভ পূর্ণ থাকায় image pull ব্যর্থ হয়েছিল।
 - [x] ধাপ ৭: history import (source=history, unread/bot-pause নেই, পুরনো চ্যাট "বন্ধ" অবস্থায়), contact sync (add নাম বসায়, remove কিছু মোছে না), Embedded Signup সার্ভার-অংশ (token exchange, is_on_biz_app যাচাই, webhook subscribe, smb_app_data একবারই), অ্যাডমিন পেজ `/settings/channels`। migration `0003`। ১১৬টি টেস্ট পাস।
 - [ ] ধাপ ৭ বাকি: আসল Meta App + Tech Provider সেটআপের পর Embedded Signup-এর end-to-end (FB SDK অংশ এখনো ব্রাউজারে পরীক্ষিত নয়); আসল history/state_sync payload ধরে fixture বদলানো; media (`media_placeholder`) পরে আলাদা webhook-এ আসে, এখনো ধরা হয়নি।
-- [ ] ধাপ ৮ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
+- [x] ধাপ ৮: Facebook Page সংযোগ: লগইন → পরিচালিত পেজের তালিকা (token ছাড়া) → বেছে সংযুক্ত (long-lived exchange, MESSAGING/MANAGE অনুমতি যাচাই, `subscribed_apps` = messages, message_echoes, messaging_postbacks, token এনক্রিপ্ট)। ১২৫টি টেস্ট পাস।
+- [ ] ধাপ ৮ বাকি: আসল Meta App + টেস্ট পেজে Facebook Login end-to-end; `pages_*` permission-এর App Review; Messenger কাস্টমারের নাম Graph থেকে আনা (এখন PSID দেখায়); ডকে অযাচাইকৃত: Page token মেয়াদ, `/me/accounts`।
+- [ ] ধাপ ৯ থেকে: `CLAUDE.md`-র কাজের ক্রম দেখো।
 
 ## VPS deploy (ধাপ ৫)
 

@@ -96,7 +96,7 @@ src/
 5. [x] Messenger webhook/sender (টেস্ট পেজ) (কোড ও টেস্ট সম্পূর্ণ; আসল টেস্ট পেজে end-to-end বাকি)
 6. [x] Inbox UI (real-time, assign, notes, channel filter) (ব্রাউজারে আসল ডাটাবেসে যাচাই করা; আসল Meta টেস্ট নম্বরে end-to-end বাকি। WhatsApp-এ ২৪ ঘণ্টার পরে template পাঠানো ধাপ ১২-তে)
 7. [x] WhatsApp Coexistence: Embedded Signup + echo + history + contact sync (কোড, টেস্ট ও সই-করা webhook দিয়ে Docker Postgres-এ যাচাই সম্পূর্ণ; আসল Meta App/নম্বরে Embedded Signup বাকি, `ALLOW_REAL_CHANNEL_CONNECT=false` দিয়ে বন্ধ রাখা। `/register` কোথাও নেই। history/contact sync Meta ডক থেকে বানানো fixture-এ পরীক্ষিত, আসল payload ধরা বাকি)
-8. [ ] Facebook Page সংযোগ (Facebook Login → page token → subscribe)
+8. [x] Facebook Page সংযোগ (Facebook Login → page token → subscribe) (কোড, টেস্ট ও অ্যাডমিন UI সম্পূর্ণ; আসল Meta App/টেস্ট পেজে Facebook Login পরীক্ষা বাকি। Page token সার্ভারে এনক্রিপ্ট করে রাখা, ব্রাউজারে যায় না; আসল পেজ `ALLOW_REAL_CHANNEL_CONNECT` ছাড়া যুক্ত হয় না, "টেস্ট পেজ" টিক থাকলে হয়। Page token-এর মেয়াদ না-থাকা Meta ডকে যাচাই করিনি; `/me/accounts` ও token exchange আমার জানা Graph আচরণ অনুযায়ী লেখা)
 9. [ ] Automation ইঞ্জিন (welcome, keyword menu, office hours, human-reply pause)
 10. [ ] AI bot + knowledge base
 11. [ ] কন্টাক্ট, ট্যাগ, merge, CSV import

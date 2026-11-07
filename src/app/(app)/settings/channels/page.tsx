@@ -6,6 +6,7 @@ import { requireRole } from "@/core/auth/dal";
 import { db } from "@/db";
 import { channels, whatsappSyncState } from "@/db/schema";
 import { formatFull } from "@/lib/format";
+import { ConnectMessenger } from "./connect-messenger";
 import { ConnectWhatsApp } from "./connect-whatsapp";
 
 export const metadata = { title: "চ্যানেল — Saimum CRM" };
@@ -97,6 +98,20 @@ async function ChannelsContent() {
           </p>
         ) : (
           <ConnectWhatsApp appId={appId} configId={configId} graphVersion={graphVersion} />
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-semibold">Facebook Page (Messenger)</h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Facebook দিয়ে লগইন করে আপনার পরিচালিত পেজ বেছে নিন। উন্নয়নের সময় শুধু <strong>টেস্ট পেজ</strong> সংযুক্ত করুন; আসল পেজ go-live ধাপে।
+        </p>
+        {!appId ? (
+          <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+            <code>META_APP_ID</code> সেট করা নেই।
+          </p>
+        ) : (
+          <ConnectMessenger appId={appId} graphVersion={graphVersion} realAllowed={allowed} />
         )}
       </section>
     </main>
