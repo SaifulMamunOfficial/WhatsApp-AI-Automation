@@ -98,7 +98,7 @@ src/
 7. [x] WhatsApp Coexistence: Embedded Signup + echo + history + contact sync (কোড, টেস্ট ও সই-করা webhook দিয়ে Docker Postgres-এ যাচাই সম্পূর্ণ; আসল Meta App/নম্বরে Embedded Signup বাকি, `ALLOW_REAL_CHANNEL_CONNECT=false` দিয়ে বন্ধ রাখা। `/register` কোথাও নেই। history/contact sync Meta ডক থেকে বানানো fixture-এ পরীক্ষিত, আসল payload ধরা বাকি)
 8. [x] Facebook Page সংযোগ (Facebook Login → page token → subscribe) (কোড, টেস্ট ও অ্যাডমিন UI সম্পূর্ণ; আসল Meta App/টেস্ট পেজে Facebook Login পরীক্ষা বাকি। Page token সার্ভারে এনক্রিপ্ট করে রাখা, ব্রাউজারে যায় না; আসল পেজ `ALLOW_REAL_CHANNEL_CONNECT` ছাড়া যুক্ত হয় না, "টেস্ট পেজ" টিক থাকলে হয়। Page token-এর মেয়াদ না-থাকা Meta ডকে যাচাই করিনি; `/me/accounts` ও token exchange আমার জানা Graph আচরণ অনুযায়ী লেখা)
 9. [x] Automation ইঞ্জিন (welcome, keyword menu, office hours, human-reply pause) (আসল Docker Postgres-এ সই-করা webhook দিয়ে end-to-end যাচাই; আসল Meta-তে পাঠানো বাকি। Job queue (pg-boss) ধাপ ১০-এ; এখন webhook-এর 200-এর পরে `after()` দিয়ে চলে)
-10. [ ] AI bot + knowledge base
+10. [x] AI bot + knowledge base (কাঠামো, নকল-provider টেস্ট, অ্যাডমিন পেজ ও আসল Postgres-এ UI যাচাই সম্পূর্ণ; **আসল AI API key দিয়ে কোনো উত্তর এখনো যাচাই হয়নি**, কারণ key নেই। pg-boss queue এখনো যোগ হয়নি, `after()`-ই আছে)
 11. [ ] কন্টাক্ট, ট্যাগ, merge, CSV import
 12. [ ] WhatsApp templates + broadcast
 13. [ ] VPS deploy (Docker Compose, Caddy, backups), পূর্ণ পরীক্ষা
@@ -145,6 +145,15 @@ src/
 - Keyword মিল: ছোট হাতের, বাংলা সংখ্যা → ইংরেজি (১ = 1), যতিচিহ্ন বাদ, **পুরো শব্দ** (`1` ≠ `150`)। শুধু টেক্সট; ছবি/অডিওতে keyword নয়, কিন্তু স্বাগত/অফিস নোটিস যেতে পারে। মেনু = `menu, মেনু` keyword-এর একটা নিয়ম।
 - ট্রিগার: `ingestEvents` শুধু **নতুন সেভ হওয়া** live customer মেসেজ `newInbound`-এ দেয় (redelivery দেয় না ⇒ দ্বিতীয় উত্তর নেই); webhook route `scheduleAutomations()` (`after()`) ডাকে। bot-এর ব্যর্থতা লগ হয়, কখনো webhook বা অন্য কিছু ভাঙে না। `after()` ক্র্যাশে হারিয়ে গেলে retry নেই; ধাপ ১০-এ টেকসই queue আসবে।
 - নতুন আসল চ্যানেল **bot বন্ধ** অবস্থায় শুরু (go-live: প্রথম ১–২ সপ্তাহ বন্ধ, পরে অফিস সময়ের বাইরে, তারপর ২৪ ঘণ্টা)। এখন "শুধু অফিস সময়ের বাইরে" মোড আলাদা নেই; সেটা go-live-এর আগে যোগ করা দরকার।
+
+## AI bot ও জ্ঞানভান্ডার (ধাপ ১০-এ সিদ্ধান্ত)
+
+- `src/core/ai/`: `retrieve.ts` (জ্ঞানভান্ডার থেকে প্রাসঙ্গিক লেখা: শব্দ-স্তরের অক্ষর-trigram, বাংলা suffix সামলায়; ছোট ভান্ডার পুরোটাই যায়), `providers.ts` (Anthropic ও OpenAI, plain fetch, SDK নয়; মডেল `AI_MODEL`, ডিফল্ট `claude-haiku-5-5` / `gpt-4o-mini` — **ডিফল্ট মডেলের নাম আসল API-তে যাচাই করা হয়নি**), `answer.ts` (prompt + JSON উত্তর পার্স)।
+- **নিয়ম**: AI শুধু জ্ঞানভান্ডার থেকে উত্তর দেয়। উত্তর `{"answer","handoff","reason"}` JSON; অবৈধ/খালি/বড়/ভাঙা উত্তর **সবসময় handoff**, কখনো আন্দাজি বার্তা নয়। জ্ঞানভান্ডার খালি হলে মডেল ডাকাই হয় না। গ্রাহকের মেসেজের ভেতরের নির্দেশ মানতে নিষেধ করা আছে (prompt injection)।
+- **অগ্রাধিকার**: keyword > AI > অফিস-নোটিস > স্বাগত। AI শুধু text মেসেজে, প্রতি মেসেজে একটাই উত্তর, আর provider (`ANTHROPIC_API_KEY`/`OPENAI_API_KEY`) + অন্তত একটা চালু লেখা + অ্যাডমিন সুইচ (kind `ai` automation row) তিনটাই লাগে; না থাকলে বাকি bot আগের মতো চলে।
+- **Handoff**: কথোপকথনে `needs_human = true` + `bot_paused = true` + status open; গ্রাহককে হ্যান্ডঅফ বার্তা (এডিটযোগ্য) যায়; ইনবক্সে লাল "মানুষ দরকার" ব্যাজ ও ফিল্টার। মানুষ উত্তর দিলে (CRM/ফোন/পেজ ইনবক্স) বা কথোপকথন বন্ধ করলে চিহ্ন সরে। Provider ব্যর্থ হলে: `needs_human = true` (bot থামে না), আর সাধারণ নিয়ম (স্বাগত/অফিস-নোটিস) ফলব্যাক।
+- **সুরক্ষা**: কথোপকথনে ঘণ্টায় সর্বোচ্চ N AI উত্তর (ডিফল্ট ৬), বেশি হলে handoff। AI-র উত্তর `sendReply(sender:"bot")` দিয়ে যায়, তাই ২৪ ঘণ্টার নিয়ম ও `HUMAN_AGENT` নিষেধ বহাল। Provider ত্রুটিতে API key/অনুরোধ লগে যায় না।
+- পেজ `/settings/knowledge` (অ্যাডমিন): AI চালু/বন্ধ, হ্যান্ডঅফ বার্তা, ঘণ্টার সীমা, লেখা যোগ/সম্পাদনা/বন্ধ/মোছা। উত্তর সঠিক রাখতে দাম/তারিখ হালনাগাদ রাখা অ্যাডমিনের দায়িত্ব।
 
 ## Docker ছাড়া ডেভ ডাটাবেস
 

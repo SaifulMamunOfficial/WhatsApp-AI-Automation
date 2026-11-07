@@ -1,7 +1,7 @@
 import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { channels } from "./channels";
 
-export const automationKind = pgEnum("automation_kind", ["welcome", "keyword", "office_hours"]);
+export const automationKind = pgEnum("automation_kind", ["welcome", "keyword", "office_hours", "ai"]);
 export const templateStatus = pgEnum("template_status", ["draft", "pending", "approved", "rejected", "paused"]);
 
 // Welcome message, keyword menu entries, out-of-office auto-reply.

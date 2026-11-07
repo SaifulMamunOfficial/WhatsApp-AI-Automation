@@ -38,6 +38,8 @@ export const conversations = pgTable(
     assignedUserId: uuid("assigned_user_id").references(() => users.id, { onDelete: "set null" }),
     // Set when a human replies (phone/page echo or CRM agent); the bot stays silent until cleared.
     botPaused: boolean("bot_paused").notNull().default(false),
+    // The bot could not help (AI handoff / provider failure): a person must answer. Cleared when one does.
+    needsHuman: boolean("needs_human").notNull().default(false),
     // Start of the 24h reply window (bot may answer; templates/human tag needed after).
     lastCustomerMessageAt: timestamp("last_customer_message_at", { withTimezone: true }),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),

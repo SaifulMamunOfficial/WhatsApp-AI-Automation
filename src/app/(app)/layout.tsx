@@ -33,6 +33,11 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
               অটোমেশন
             </Link>
           )}
+          {user.role === "admin" && (
+            <Link href="/settings/knowledge" className="text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400">
+              জ্ঞানভান্ডার ও AI
+            </Link>
+          )}
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span>

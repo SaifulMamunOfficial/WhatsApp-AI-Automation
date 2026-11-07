@@ -18,10 +18,14 @@ export interface AutomationContext {
   lastBotReplyAt: Date | null;
   now: Date;
   office: OfficeHours;
+  /** An AI provider is configured and the knowledge base has articles. Defaults to false. */
+  aiAvailable?: boolean;
 }
 
 export type Decision =
   | { action: "reply"; text: string; automationId: string; kind: Automation["kind"] }
+  /** Ask the AI (grounded in the knowledge base); the runner handles answer/handoff/failure. */
+  | { action: "ai"; automationId: string; handoffText: string; maxRepliesPerHour: number }
   | { action: "none"; reason: NoReplyReason };
 
 export type NoReplyReason =
@@ -41,7 +45,7 @@ const HOUR = 60 * 60 * 1000;
  *     (a reply from the phone/page inbox/CRM sets bot_paused).
  *  2. Only for live inbound customer messages (not history, not our own messages).
  *  3. At most ONE automated reply per customer message. Priority:
- *       keyword rule  >  after-hours notice (when closed)  >  welcome.
+ *       keyword rule  >  AI answer (when enabled)  >  after-hours notice  >  welcome.
  *     A keyword answer is useful even after hours; the after-hours notice replaces the
  *     welcome so the customer never gets two messages at once.
  */
@@ -66,7 +70,13 @@ export function decideAutomation(automations: Automation[], ctx: AutomationConte
     }
   }
 
-  // 2) after-hours notice
+  // 2) AI answer from the knowledge base (text only), before the generic notices
+  if (text && ctx.aiAvailable) {
+    const ai = applicable.find((a) => a.kind === "ai");
+    if (ai) return { action: "ai", automationId: ai.id, handoffText: ai.config.handoffText, maxRepliesPerHour: ai.config.maxRepliesPerHour };
+  }
+
+  // 3) after-hours notice
   if (!isWithinOfficeHours(ctx.now, ctx.office)) {
     const office = applicable.find((a) => a.kind === "office_hours");
     if (office) {
@@ -76,7 +86,7 @@ export function decideAutomation(automations: Automation[], ctx: AutomationConte
     }
   }
 
-  // 3) welcome: first message ever, or the customer returns after a long silence
+  // 4) welcome: first message ever, or the customer returns after a long silence
   const welcome = applicable.find((a) => a.kind === "welcome");
   if (welcome) {
     const isFirst = ctx.inboundCount <= 1 && ctx.previousActivityAt === null;

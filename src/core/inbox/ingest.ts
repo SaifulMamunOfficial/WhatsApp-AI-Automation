@@ -266,7 +266,7 @@ async function touchConversation(tx: Tx, conversationId: string, m: NormalizedMe
     const humanReply = m.source === "phone_app" || m.source === "page_inbox";
     await tx
       .update(c)
-      .set(humanReply ? { ...base, botPaused: true } : base)
+      .set(humanReply ? { ...base, botPaused: true, needsHuman: false } : base)
       .where(eq(c.id, conversationId));
   }
 }

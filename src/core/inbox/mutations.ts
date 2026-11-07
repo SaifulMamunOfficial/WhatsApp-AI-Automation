@@ -59,7 +59,7 @@ export async function setConversationStatus(
 ): Promise<MutationResult> {
   const updated = await db
     .update(schema.conversations)
-    .set({ status })
+    .set(status === "closed" ? { status, needsHuman: false } : { status })
     .where(eq(schema.conversations.id, conversationId))
     .returning({ id: schema.conversations.id });
   if (!updated.length) return { ok: false, error: "কথোপকথন পাওয়া যায়নি।" };

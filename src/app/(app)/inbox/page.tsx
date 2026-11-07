@@ -19,6 +19,7 @@ const paramsSchema = z.object({
   assigned: z.enum(["all", "me", "unassigned"]).catch("all"),
   status: z.enum(["open", "closed", "all"]).catch("open"),
   q: z.string().max(100).optional().catch(undefined),
+  needs: z.enum(["1"]).optional().catch(undefined),
 });
 
 export type InboxParams = z.infer<typeof paramsSchema>;
@@ -41,9 +42,10 @@ async function InboxContent({ searchParams }: { searchParams: SearchParams }) {
     assigned: first(raw.assigned),
     status: first(raw.status),
     q: first(raw.q),
+    needs: first(raw.needs),
   });
 
-  const filters: InboxFilters = { channelType: params.channel, assigned: params.assigned, status: params.status, q: params.q };
+  const filters: InboxFilters = { channelType: params.channel, assigned: params.assigned, status: params.status, q: params.q, needsHuman: params.needs === "1" };
   const [conversations, detail, users] = await Promise.all([
     listConversations(db, filters, user.id),
     params.c ? getConversation(db, params.c) : Promise.resolve(null),

@@ -89,7 +89,7 @@ describe("decideAutomation", () => {
     office: { tz: "Asia/Dhaka", open: "10:00", close: "22:00" },
     ...over,
   });
-  const reply = (d: ReturnType<typeof decideAutomation>) => (d.action === "reply" ? `${d.kind}:${d.text}` : `none:${d.reason}`);
+  const reply = (d: ReturnType<typeof decideAutomation>) => (d.action === "reply" ? `${d.kind}:${d.text}` : d.action === "ai" ? "ai" : `none:${d.reason}`);
 
   it("is silent when the bot is off or a human took over", () => {
     expect(reply(decideAutomation(all, ctx({ channel: { id: "ch1", botEnabled: false } })))).toBe("none:bot_disabled");

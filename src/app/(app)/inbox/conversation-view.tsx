@@ -127,7 +127,10 @@ export function ConversationView({
             </button>
           </form>
 
-          {c.botPaused && (
+          {c.needsHuman && (
+            <span className="rounded bg-red-100 px-2 py-0.5 text-red-800 dark:bg-red-900/40 dark:text-red-200">🙋 bot উত্তর দিতে পারেনি, মানুষ দরকার</span>
+          )}
+          {c.botPaused && !c.needsHuman && (
             <form action={resumeBotAction} className="flex items-center gap-1">
               <input type="hidden" name="conversationId" value={c.id} />
               <span className="text-amber-700 dark:text-amber-400">মানুষ উত্তর দিয়েছে, bot বন্ধ</span>

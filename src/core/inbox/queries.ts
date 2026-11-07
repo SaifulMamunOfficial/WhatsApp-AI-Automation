@@ -8,6 +8,8 @@ export interface InboxFilters {
   /** "me" and "unassigned" are relative to viewerId. */
   assigned?: "all" | "me" | "unassigned";
   status?: "open" | "closed" | "all";
+  /** Only conversations the bot handed over to a person. */
+  needsHuman?: boolean;
   q?: string;
 }
 
@@ -24,6 +26,7 @@ const conversationColumns = {
   id: schema.conversations.id,
   status: schema.conversations.status,
   botPaused: schema.conversations.botPaused,
+  needsHuman: schema.conversations.needsHuman,
   unreadCount: schema.conversations.unreadCount,
   lastMessageAt: schema.conversations.lastMessageAt,
   lastMessagePreview: schema.conversations.lastMessagePreview,
@@ -55,6 +58,8 @@ export async function listConversations(db: Db, filters: InboxFilters, viewerId:
 
   if (filters.assigned === "me") where.push(eq(schema.conversations.assignedUserId, viewerId));
   else if (filters.assigned === "unassigned") where.push(sql`${schema.conversations.assignedUserId} is null`);
+
+  if (filters.needsHuman) where.push(eq(schema.conversations.needsHuman, true));
 
   const status = filters.status ?? "open";
   if (status !== "all") where.push(eq(schema.conversations.status, status));

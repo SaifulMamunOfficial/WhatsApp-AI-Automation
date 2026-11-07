@@ -54,6 +54,7 @@ export function ConversationList({
           {params.channel && <input type="hidden" name="channel" value={params.channel} />}
           {params.assigned !== "all" && <input type="hidden" name="assigned" value={params.assigned} />}
           {params.status !== "open" && <input type="hidden" name="status" value={params.status} />}
+          {params.needs && <input type="hidden" name="needs" value={params.needs} />}
           <input
             type="search"
             name="q"
@@ -75,6 +76,8 @@ export function ConversationList({
           <span className="mx-1 border-l border-zinc-300 dark:border-zinc-700" />
           <Tab href={f({ status: "open" })} active={params.status === "open"}>খোলা</Tab>
           <Tab href={f({ status: "closed" })} active={params.status === "closed"}>বন্ধ</Tab>
+          <span className="mx-1 border-l border-zinc-300 dark:border-zinc-700" />
+          <Tab href={f({ needs: params.needs ? null : "1" })} active={!!params.needs}>🙋 মানুষ দরকার</Tab>
         </div>
       </div>
 
@@ -106,7 +109,8 @@ export function ConversationList({
                 <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
                   <ChannelBadge type={c.channelType} />
                   {c.assigneeName && <span>→ {c.assigneeName}</span>}
-                  {c.botPaused && <span title="মানুষ উত্তর দিয়েছে, bot বন্ধ">🙋</span>}
+                  {c.needsHuman && <span className="rounded bg-red-100 px-1.5 py-0.5 text-[11px] font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">মানুষ দরকার</span>}
+                  {c.botPaused && !c.needsHuman && <span title="মানুষ উত্তর দিয়েছে, bot বন্ধ">🙋</span>}
                 </div>
               </Link>
             </li>
