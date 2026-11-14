@@ -1,7 +1,8 @@
 import { and, asc, desc, eq, gt, isNotNull, lt, ne, sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import { answerFromKnowledge, type AnswerResult } from "@/core/ai/answer";
-import { aiProviderFromEnv, type AiProvider } from "@/core/ai/providers";
+import { getActiveProvider } from "@/core/ai/config";
+import type { AiProvider } from "@/core/ai/providers";
 import { retrieveArticles } from "@/core/ai/retrieve";
 import { publishInboxEvent } from "@/core/inbox/events";
 import type { Db } from "@/core/inbox/ingest";
@@ -79,7 +80,7 @@ export async function runAutomationForMessage(db: Db, deps: RunDeps, target: New
     .limit(1);
 
   // AI is only an option when a provider is configured and there is knowledge to ground it.
-  const provider = deps.ai !== undefined ? deps.ai : aiProviderFromEnv();
+  const provider = deps.ai !== undefined ? deps.ai : await getActiveProvider(db);
   const articles = provider
     ? await db.select({ id: schema.knowledgeBase.id, title: schema.knowledgeBase.title, content: schema.knowledgeBase.content }).from(schema.knowledgeBase).where(eq(schema.knowledgeBase.enabled, true))
     : [];

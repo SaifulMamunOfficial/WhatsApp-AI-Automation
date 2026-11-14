@@ -1,6 +1,9 @@
 import { Suspense } from "react";
+import { MessageSquare } from "lucide-react";
 import { z } from "zod";
+import { EmptyState } from "@/components/ui";
 import { requireUser } from "@/core/auth/dal";
+import { getT } from "@/lib/i18n/server";
 import { getConversation, listAssignableUsers, listConversations, type InboxFilters } from "@/core/inbox/queries";
 import { db } from "@/db";
 import { ConversationList } from "./conversation-list";
@@ -26,7 +29,7 @@ export type InboxParams = z.infer<typeof paramsSchema>;
 
 export default function InboxPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<p className="p-4 text-sm">লোড হচ্ছে…</p>}>
+    <Suspense fallback={<p className="p-4 text-sm">…</p>}>
       <InboxContent searchParams={searchParams} />
     </Suspense>
   );
@@ -34,6 +37,7 @@ export default function InboxPage({ searchParams }: { searchParams: SearchParams
 
 async function InboxContent({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
+  const { t } = await getT();
   const raw = await searchParams;
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const params = paramsSchema.parse({
@@ -53,21 +57,19 @@ async function InboxContent({ searchParams }: { searchParams: SearchParams }) {
   ]);
 
   return (
-    <div className="flex h-[calc(100dvh-3.25rem)] min-h-0">
+    <div className="flex h-full min-h-0">
       <Realtime />
-      <aside className={`${detail ? "hidden md:flex" : "flex"} w-full min-h-0 flex-col border-zinc-200 md:w-80 md:border-r lg:w-96 dark:border-zinc-800`}>
+      <aside className={`${detail ? "hidden md:flex" : "flex"} w-full min-h-0 flex-col border-border bg-surface md:w-80 md:border-r lg:w-[22rem]`}>
         <ConversationList conversations={conversations} params={params} selectedId={detail?.conversation.id} />
       </aside>
-      <section className={`${detail ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-1 flex-col`}>
+      <section className={`${detail ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-1 flex-col items-stretch justify-center bg-bg`}>
         {detail ? (
           <>
             {detail.conversation.unreadCount > 0 && <MarkRead conversationId={detail.conversation.id} />}
             <ConversationView detail={detail} users={users} viewer={user} params={params} />
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center p-6 text-sm text-zinc-500">
-            {params.c ? "কথোপকথন পাওয়া যায়নি।" : "বাঁ দিক থেকে একটি কথোপকথন বেছে নিন।"}
-          </div>
+          <EmptyState icon={<MessageSquare aria-hidden className="size-10" />} title={params.c ? t("কথোপকথন পাওয়া যায়নি") : t("একটি কথোপকথন বেছে নিন")} hint={params.c ? undefined : t("বাঁ দিকের তালিকা থেকে বেছে নিলে মেসেজ ও উত্তরের জায়গা এখানে খুলবে।")} />
         )}
       </section>
     </div>

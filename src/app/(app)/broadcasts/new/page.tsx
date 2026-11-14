@@ -8,23 +8,26 @@ import { eligibleRecipients } from "@/core/broadcast/engine";
 import { db } from "@/db";
 import { channels, tags, templates } from "@/db/schema";
 import { NewBroadcastForm } from "./new-form";
+import { buttonClass, fieldClass } from "@/components/ui";
+import { getT } from "@/lib/i18n/server";
 
-export const metadata = { title: "নতুন broadcast — Saimum CRM" };
+export const metadata = { title: "New broadcast — Saimum CRM" };
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
 export default function NewBroadcastPage({ searchParams }: { searchParams: SP }) {
   return (
-    <Suspense fallback={<p className="p-4 text-sm">লোড হচ্ছে…</p>}>
+    <Suspense fallback={<p className="p-4 text-sm">…</p>}>
       <Content searchParams={searchParams} />
     </Suspense>
   );
 }
 
-const field = "w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm dark:border-zinc-700";
+const field = fieldClass;
 
 async function Content({ searchParams }: { searchParams: SP }) {
   await requireRole("admin");
+  const { t: tr } = await getT();
   const raw = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const channelId = z.uuid().safeParse(one(raw.channelId));
@@ -42,34 +45,34 @@ async function Content({ searchParams }: { searchParams: SP }) {
   const body = template ? templateBodyText(template.components) : "";
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-5 p-4">
+    <main className="mx-auto w-full max-w-2xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
       <Link href="/broadcasts" className="text-sm underline">← Broadcast</Link>
-      <h1 className="text-lg font-semibold">নতুন broadcast</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{tr("নতুন broadcast")}</h1>
 
       {wa.length === 0 ? (
-        <p className="text-sm text-zinc-500">কোনো WhatsApp চ্যানেল নেই।</p>
+        <p className="text-sm text-muted">{tr("কোনো WhatsApp চ্যানেল নেই।")}</p>
       ) : (
         <>
           <form action="/broadcasts/new" className="space-y-2">
-            <label className="block text-sm">চ্যানেল
+            <label className="block text-sm">{tr("চ্যানেল বাছুন")}
               <select name="channelId" defaultValue={chosen?.id} className={`${field} mt-1`}>
-                {wa.map((c) => <option key={c.id} value={c.id}>{c.name}{c.isTest ? " (টেস্ট)" : ""}</option>)}
+                {wa.map((c) => <option key={c.id} value={c.id}>{c.name}{c.isTest ? " (" + tr("টেস্ট") + ")" : ""}</option>)}
               </select>
             </label>
-            <label className="block text-sm">অনুমোদিত টেমপ্লেট
+            <label className="block text-sm">{tr("অনুমোদিত টেমপ্লেট")}
               <select name="templateId" defaultValue={template?.id ?? ""} className={`${field} mt-1`}>
-                <option value="">— বেছে নিন —</option>
+                <option value="">{tr("— বেছে নিন —")}</option>
                 {approved.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.language})</option>)}
               </select>
             </label>
-            <label className="block text-sm">শুধু এই ট্যাগের কন্টাক্ট (ঐচ্ছিক)
+            <label className="block text-sm">{tr("শুধু এই ট্যাগের কন্টাক্ট (ঐচ্ছিক)")}
               <select name="tagId" defaultValue={tagId.success ? tagId.data : ""} className={`${field} mt-1`}>
-                <option value="">সব সম্মতিপ্রাপ্ত</option>
+                <option value="">{tr("সব সম্মতিপ্রাপ্ত")}</option>
                 {allTags.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </label>
-            <button type="submit" className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700">পরের ধাপ</button>
-            {approved.length === 0 && <p className="text-sm text-amber-700">এই চ্যানেলে কোনো approved টেমপ্লেট নেই। আগে টেমপ্লেট পাতা থেকে sync বা জমা দিন।</p>}
+            <button type="submit" className={buttonClass("secondary", "sm")}>{tr("পরের ধাপ")}</button>
+            {approved.length === 0 && <p className="text-sm text-warning">{tr("এই চ্যানেলে কোনো approved টেমপ্লেট নেই। আগে টেমপ্লেট পাতা থেকে sync বা জমা দিন।")}</p>}
           </form>
 
           {template && chosen && reach !== null && (

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { connectPageAction, listPagesAction } from "@/core/channels/actions";
+import { buttonClass } from "@/components/ui";
+import { useI18n } from "@/lib/i18n/client";
 
 interface FbSdk {
   init(opts: { appId: string; autoLogAppEvents: boolean; xfbml: boolean; version: string }): void;
@@ -19,6 +21,7 @@ interface Page {
 // Facebook Login -> pick a Page -> the server stores the Page token (encrypted) and
 // subscribes the app. The browser only ever holds the user's login token and page names.
 export function ConnectMessenger({ appId, graphVersion, realAllowed }: { appId: string; graphVersion: string; realAllowed: boolean }) {
+  const { t } = useI18n();
   const [sdkReady, setSdkReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [userToken, setUserToken] = useState<string | null>(null);
@@ -54,14 +57,14 @@ export function ConnectMessenger({ appId, graphVersion, realAllowed }: { appId: 
         const token = r.authResponse?.accessToken;
         if (!token) {
           setBusy(false);
-          setNote({ kind: "error", text: "Facebook লগইন বাতিল বা অসম্পূর্ণ।" });
+          setNote({ kind: "error", text: t("Facebook লগইন বাতিল বা অসম্পূর্ণ।") });
           return;
         }
         setUserToken(token);
         void listPagesAction(token).then((res) => {
           setBusy(false);
           if (res.ok) setPages(res.pages);
-          else setNote({ kind: "error", text: res.error });
+          else setNote({ kind: "error", text: t(res.error) });
         });
       },
       { scope: "pages_show_list,pages_messaging,pages_manage_metadata" },
@@ -75,35 +78,35 @@ export function ConnectMessenger({ appId, graphVersion, realAllowed }: { appId: 
     const res = await connectPageAction({ userToken, pageId, isTest });
     setBusy(false);
     if (res.ok) {
-      setNote({ kind: "ok", text: `সংযুক্ত হয়েছে: ${res.name}। Bot বন্ধ আছে।` });
+      setNote({ kind: "ok", text: t("সংযুক্ত হয়েছে: {name}। Bot বন্ধ আছে।", { name: res.name }) });
       setPages([]);
       setUserToken(null);
     } else {
-      setNote({ kind: "error", text: res.error });
+      setNote({ kind: "error", text: t(res.error) });
     }
   }
 
   return (
     <div className="space-y-3">
-      <button type="button" onClick={login} disabled={!sdkReady || busy} className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-        {busy ? "অপেক্ষা করুন…" : "Facebook দিয়ে পেজ বেছে নিন"}
+      <button type="button" onClick={login} disabled={!sdkReady || busy} className={buttonClass("primary")}>
+        {busy ? t("অপেক্ষা করুন…") : t("Facebook দিয়ে পেজ বেছে নিন")}
       </button>
-      {!sdkReady && <p className="text-xs text-zinc-500">Facebook SDK লোড হচ্ছে…</p>}
+      {!sdkReady && <p className="text-xs text-muted">{t("Facebook SDK লোড হচ্ছে…")}</p>}
 
       {pages.length > 0 && (
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} />
-            এটা টেস্ট পেজ{!realAllowed && " (আসল পেজ সংযোগ বন্ধ আছে)"}
+            {t("এটা টেস্ট পেজ")}{!realAllowed && " " + t("(আসল পেজ সংযোগ বন্ধ আছে)")}
           </label>
           <ul className="space-y-1">
             {pages.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-2 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+              <li key={p.id} className="flex items-center justify-between gap-2 rounded border border-border px-3 py-2 text-sm">
                 <span>
-                  {p.name} {!p.canMessage && <em className="text-xs text-red-600">(মেসেজের অনুমতি নেই)</em>}
+                  {p.name} {!p.canMessage && <em className="text-xs text-danger">{t("(মেসেজের অনুমতি নেই)")}</em>}
                 </span>
-                <button type="button" disabled={busy || !p.canMessage || (!isTest && !realAllowed)} onClick={() => connect(p.id)} className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-zinc-700">
-                  সংযুক্ত করুন
+                <button type="button" disabled={busy || !p.canMessage || (!isTest && !realAllowed)} onClick={() => connect(p.id)} className={buttonClass("secondary", "sm")}>
+                  {t("সংযুক্ত করুন")}
                 </button>
               </li>
             ))}
@@ -111,7 +114,7 @@ export function ConnectMessenger({ appId, graphVersion, realAllowed }: { appId: 
         </div>
       )}
       {note && (
-        <p role="status" className={`rounded px-3 py-2 text-sm ${note.kind === "ok" ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-200" : "bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-200"}`}>
+        <p role="status" className={`rounded px-3 py-2 text-sm ${note.kind === "ok" ? "bg-success-soft text-fg" : "bg-danger-soft text-fg"}`}>
           {note.text}
         </p>
       )}

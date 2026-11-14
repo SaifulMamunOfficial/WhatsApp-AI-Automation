@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { connectWhatsAppAction, type ConnectResult } from "@/core/channels/actions";
+import { buttonClass } from "@/components/ui";
+import { useI18n } from "@/lib/i18n/client";
 
 // WhatsApp Coexistence "Embedded Signup": opens Meta's popup where the business scans a QR
 // code with its WhatsApp Business App. We receive an exchangeable code (valid 30 seconds)
@@ -30,6 +32,7 @@ interface SessionInfo {
 const FINISH_EVENTS = new Set(["FINISH", "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"]);
 
 export function ConnectWhatsApp({ appId, configId, graphVersion }: { appId: string; configId: string; graphVersion: string }) {
+  const { t } = useI18n();
   const [sdkReady, setSdkReady] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -47,10 +50,10 @@ export function ConnectWhatsApp({ appId, configId, graphVersion }: { appId: stri
           session.current = { wabaId: data.data?.waba_id, phoneNumberId: data.data?.phone_number_id, event: data.event };
         } else if (data.event === "CANCEL") {
           setBusy(false);
-          setMessage({ kind: "error", text: ["সংযোগ বাতিল করা হয়েছে।"] });
+          setMessage({ kind: "error", text: [t("সংযোগ বাতিল করা হয়েছে।")] });
         } else if (data.event === "ERROR") {
           setBusy(false);
-          setMessage({ kind: "error", text: [`Meta ত্রুটি: ${String(data.data?.error_message ?? "অজানা")}`] });
+          setMessage({ kind: "error", text: [t("Meta ত্রুটি: {e}", { e: String(data.data?.error_message ?? t("অজানা")) })] });
         }
       } catch {
         /* not JSON: not ours */
@@ -74,7 +77,7 @@ export function ConnectWhatsApp({ appId, configId, graphVersion }: { appId: stri
       document.body.appendChild(s);
     }
     return () => window.removeEventListener("message", onMessage);
-  }, [appId, graphVersion]);
+  }, [appId, graphVersion, t]);
 
   function start() {
     if (!window.FB) return;
@@ -87,7 +90,7 @@ export function ConnectWhatsApp({ appId, configId, graphVersion }: { appId: stri
         const code = response.authResponse?.code;
         if (!code) {
           setBusy(false);
-          setMessage({ kind: "error", text: ["Meta কোনো code দেয়নি (বাতিল বা অসম্পূর্ণ)।"] });
+          setMessage({ kind: "error", text: [t("Meta কোনো code দেয়নি (বাতিল বা অসম্পূর্ণ)।")] });
           return;
         }
         void finish(code);
@@ -107,7 +110,7 @@ export function ConnectWhatsApp({ appId, configId, graphVersion }: { appId: stri
     const { wabaId, phoneNumberId } = session.current;
     if (!wabaId) {
       setBusy(false);
-      setMessage({ kind: "error", text: ["Meta থেকে WhatsApp অ্যাকাউন্টের তথ্য আসেনি। আবার চেষ্টা করুন।"] });
+      setMessage({ kind: "error", text: [t("Meta থেকে WhatsApp অ্যাকাউন্টের তথ্য আসেনি। আবার চেষ্টা করুন।")] });
       return;
     }
     let result: ConnectResult;
@@ -115,7 +118,7 @@ export function ConnectWhatsApp({ appId, configId, graphVersion }: { appId: stri
       result = await connectWhatsAppAction({ code, wabaId, phoneNumberId });
     } catch {
       setBusy(false);
-      setMessage({ kind: "error", text: ["সার্ভারে সমস্যা হয়েছে।"] });
+      setMessage({ kind: "error", text: [t("সার্ভারে সমস্যা হয়েছে।")] });
       return;
     }
     setBusy(false);
@@ -123,10 +126,10 @@ export function ConnectWhatsApp({ appId, configId, graphVersion }: { appId: stri
     if (result.ok) {
       setMessage({
         kind: "ok",
-        text: [`সংযুক্ত হয়েছে: ${result.displayPhone ?? result.phoneNumberId}`, "Bot বন্ধ আছে। কন্টাক্ট ও chat history আসতে কিছুক্ষণ লাগতে পারে।", ...result.warnings],
+        text: [t("সংযুক্ত হয়েছে: {name}", { name: result.displayPhone ?? result.phoneNumberId }), t("Bot বন্ধ আছে। কন্টাক্ট ও chat history আসতে কিছুক্ষণ লাগতে পারে।"), ...result.warnings.map((w) => t(w))],
       });
     } else {
-      setMessage({ kind: "error", text: [result.error] });
+      setMessage({ kind: "error", text: [t(result.error)] });
     }
   }
 
@@ -135,23 +138,22 @@ export function ConnectWhatsApp({ appId, configId, graphVersion }: { appId: stri
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1" />
         <span>
-          আমি বুঝেছি, এটা প্রতিষ্ঠানের <strong>আসল</strong> WhatsApp Business নম্বর। সংযোগের সময় ফোন চার্জারে ও স্থির Wi-Fi-তে থাকবে,
-          আর সিঙ্ক শেষ না হওয়া পর্যন্ত WhatsApp Business App খোলা রাখব। Bot শুরুতে বন্ধ থাকবে।
+          {t("আমি বুঝেছি, এটা প্রতিষ্ঠানের আসল WhatsApp Business নম্বর। সংযোগের সময় ফোন চার্জারে ও স্থির Wi-Fi-তে থাকবে, আর সিঙ্ক শেষ না হওয়া পর্যন্ত WhatsApp Business App খোলা রাখব। Bot শুরুতে বন্ধ থাকবে।")}
         </span>
       </label>
       <button
         type="button"
         onClick={start}
         disabled={!sdkReady || !confirmed || busy}
-        className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className={buttonClass("primary")}
       >
-        {busy ? "অপেক্ষা করুন…" : "WhatsApp নম্বর সংযুক্ত করুন"}
+        {busy ? t("অপেক্ষা করুন…") : t("WhatsApp নম্বর সংযুক্ত করুন")}
       </button>
-      {!sdkReady && <p className="text-xs text-zinc-500">Facebook SDK লোড হচ্ছে…</p>}
+      {!sdkReady && <p className="text-xs text-muted">{t("Facebook SDK লোড হচ্ছে…")}</p>}
       {message && (
-        <div role="status" className={`rounded px-3 py-2 text-sm ${message.kind === "ok" ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-200" : "bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-200"}`}>
-          {message.text.map((t, i) => (
-            <p key={i}>{t}</p>
+        <div role="status" className={`rounded px-3 py-2 text-sm ${message.kind === "ok" ? "bg-success-soft text-fg" : "bg-danger-soft text-fg"}`}>
+          {message.text.map((line, i) => (
+            <p key={i}>{line}</p>
           ))}
         </div>
       )}

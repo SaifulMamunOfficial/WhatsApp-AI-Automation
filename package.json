@@ -16,10 +16,12 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "dev:db": "tsx scripts/dev-db.ts",
-    "db:seed-dev": "tsx scripts/seed-dev.ts"
+    "db:seed-dev": "tsx scripts/seed-dev.ts",
+    "design:contrast": "node scripts/check-contrast.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",
+    "lucide-react": "^1.70.0",
     "next": "16.4.5",
     "pg": "^8.23.1",
     "react": "19.3.0",

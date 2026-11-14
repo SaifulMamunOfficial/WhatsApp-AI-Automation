@@ -54,3 +54,14 @@ export const knowledgeBase = pgTable("knowledge_base", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// API keys for the AI bot, one row per provider ("anthropic" | "openai" | "gemini"). The key is
+// AES-256-GCM encrypted (src/lib/crypto.ts) and never sent back to the browser. At most one row is
+// `active`; when none has a key the server's .env keys are the fallback.
+export const aiProviderSettings = pgTable("ai_provider_settings", {
+  provider: text("provider").primaryKey(),
+  apiKeyEncrypted: text("api_key_encrypted"),
+  model: text("model"),
+  active: boolean("active").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

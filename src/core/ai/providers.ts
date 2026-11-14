@@ -6,8 +6,10 @@ export interface ChatTurn {
   content: string;
 }
 
+export type AiProviderName = "anthropic" | "openai" | "gemini";
+
 export interface AiProvider {
-  readonly name: "anthropic" | "openai";
+  readonly name: AiProviderName;
   complete(input: { system: string; turns: ChatTurn[]; maxTokens: number }): Promise<string>;
 }
 
@@ -89,16 +91,43 @@ export function openaiProvider(o: Opts): AiProvider {
   };
 }
 
-const DEFAULT_MODEL = { anthropic: "claude-haiku-5-5", openai: "gpt-4o-mini" } as const;
+// Google Gemini (generateContent). Request/response shape written from the public API as I know it;
+// NOT yet verified against a live key.
+export function geminiProvider(o: Opts): AiProvider {
+  return {
+    name: "gemini",
+    async complete({ system, turns, maxTokens }) {
+      const r = (await post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(o.model)}:generateContent`,
+        { "x-goog-api-key": o.apiKey },
+        {
+          systemInstruction: { parts: [{ text: system }] },
+          contents: turns.map((t) => ({ role: t.role === "assistant" ? "model" : "user", parts: [{ text: t.content }] })),
+          generationConfig: { maxOutputTokens: maxTokens, responseMimeType: "application/json" },
+        },
+        o,
+      )) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+      const text = r.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+      if (!text) throw new AiProviderError("AI returned an empty response");
+      return text;
+    },
+  };
+}
+
+export const DEFAULT_MODEL: Record<AiProviderName, string> = { anthropic: "claude-haiku-5-5", openai: "gpt-4o-mini", gemini: "gemini-3.8-flash" };
+
+export function buildProvider(name: AiProviderName, o: Opts): AiProvider {
+  return (name === "openai" ? openaiProvider : name === "gemini" ? geminiProvider : anthropicProvider)(o);
+}
 
 /** The configured provider, or null when no API key is set (the bot then skips AI). */
 export function aiProviderFromEnv(
   env: Record<string, string | undefined> = process.env,
   fetchImpl?: typeof fetch,
 ): AiProvider | null {
-  const which = env.AI_PROVIDER === "openai" ? "openai" : "anthropic";
-  const apiKey = which === "openai" ? env.OPENAI_API_KEY : env.ANTHROPIC_API_KEY;
+  const which: AiProviderName = env.AI_PROVIDER === "openai" ? "openai" : env.AI_PROVIDER === "gemini" ? "gemini" : "anthropic";
+  const apiKey = which === "openai" ? env.OPENAI_API_KEY : which === "gemini" ? env.GEMINI_API_KEY : env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
   const model = env.AI_MODEL || DEFAULT_MODEL[which];
-  return (which === "openai" ? openaiProvider : anthropicProvider)({ apiKey, model, fetchImpl });
+  return buildProvider(which, { apiKey, model, fetchImpl });
 }

@@ -1,6 +1,9 @@
 "use client";
 
+import { Loader2, SendHorizontal, StickyNote } from "lucide-react";
 import { useActionState, useEffect, useRef } from "react";
+import { buttonClass, fieldClass } from "@/components/ui";
+import { useI18n } from "@/lib/i18n/client";
 import { markReadAction, noteAction, replyAction } from "@/core/inbox/actions";
 import type { FormState } from "@/core/inbox/actions";
 
@@ -21,10 +24,8 @@ export function MarkRead({ conversationId }: { conversationId: string }) {
   return null;
 }
 
-const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm disabled:opacity-50 dark:border-zinc-700";
-
 export function ReplyForm({ conversationId, disabled }: { conversationId: string; disabled: boolean }) {
+  const { t } = useI18n();
   const [state, action, pending] = useActionState<FormState, FormData>(replyAction, {});
   const ref = useRef<HTMLFormElement>(null);
 
@@ -35,39 +36,38 @@ export function ReplyForm({ conversationId, disabled }: { conversationId: string
   return (
     <form ref={ref} action={action} className="space-y-2">
       <input type="hidden" name="conversationId" value={conversationId} />
-      <textarea
-        name="text"
-        rows={2}
-        maxLength={2000}
-        required
-        disabled={disabled || pending}
-        placeholder={disabled ? "এখন উত্তর দেওয়া যাবে না" : "উত্তর লিখুন…"}
-        className={inputClass}
-        onKeyDown={(e) => {
-          // Enter sends, Shift+Enter inserts a new line.
-          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            e.currentTarget.form?.requestSubmit();
-          }
-        }}
-      />
-      <div className="flex items-center justify-between gap-3">
-        <p role="alert" className="text-sm text-red-600">
-          {state.error}
-        </p>
-        <button
-          type="submit"
+      <div className="flex items-end gap-2">
+        <textarea
+          name="text"
+          rows={2}
+          maxLength={2000}
+          required
           disabled={disabled || pending}
-          className="shrink-0 rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          {pending ? "পাঠানো হচ্ছে…" : "পাঠান"}
+          aria-label={t("উত্তর লিখুন")}
+          placeholder={disabled ? t("এখন উত্তর দেওয়া যাবে না") : t("উত্তর লিখুন… (Enter পাঠায়, Shift+Enter নতুন লাইন)")}
+          className={`${fieldClass} resize-none`}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
+        />
+        <button type="submit" disabled={disabled || pending} aria-label={t("পাঠান")} className={buttonClass("primary", "md", "size-11 shrink-0 !px-0")}>
+          {pending ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <SendHorizontal aria-hidden className="size-4" />}
         </button>
       </div>
+      {state.error && (
+        <p role="alert" className="text-sm text-danger">
+          {t(state.error)}
+        </p>
+      )}
     </form>
   );
 }
 
 export function NoteForm({ conversationId }: { conversationId: string }) {
+  const { t } = useI18n();
   const [state, action, pending] = useActionState<FormState, FormData>(noteAction, {});
   const ref = useRef<HTMLFormElement>(null);
 
@@ -78,13 +78,14 @@ export function NoteForm({ conversationId }: { conversationId: string }) {
   return (
     <form ref={ref} action={action} className="space-y-2">
       <input type="hidden" name="conversationId" value={conversationId} />
-      <textarea name="body" rows={2} maxLength={5000} required disabled={pending} placeholder="অভ্যন্তরীণ নোট (গ্রাহক দেখবেন না)" className={inputClass} />
+      <textarea name="body" rows={2} maxLength={5000} required disabled={pending} aria-label={t("নতুন নোট")} placeholder={t("অভ্যন্তরীণ নোট (গ্রাহক দেখবেন না)")} className={`${fieldClass} resize-none`} />
       <div className="flex items-center justify-between gap-3">
-        <p role="alert" className="text-sm text-red-600">
-          {state.error}
+        <p role="alert" className="text-sm text-danger">
+          {state.error && t(state.error)}
         </p>
-        <button type="submit" disabled={pending} className="shrink-0 rounded-md border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-700">
-          নোট যোগ করুন
+        <button type="submit" disabled={pending} className={buttonClass("secondary", "sm")}>
+          <StickyNote aria-hidden className="size-4" />
+          {t("নোট যোগ করুন")}
         </button>
       </div>
     </form>

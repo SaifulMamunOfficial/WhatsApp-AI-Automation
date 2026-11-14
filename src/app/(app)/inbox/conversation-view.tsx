@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { AlertCircle, ArrowLeft, Bot, Check, CheckCheck, CircleCheck, Clock, RotateCcw, StickyNote, UserRound } from "lucide-react";
+import { Alert, Avatar, Badge, buttonClass, ChannelBadge, cn, fieldClass } from "@/components/ui";
 import { assignAction, resumeBotAction, statusAction } from "@/core/inbox/actions";
 import type { ConversationDetail } from "@/core/inbox/queries";
 import { replyWindow } from "@/core/inbox/window";
 import { formatClock, formatDayLabel, formatFull, sameDay } from "@/lib/format";
+import { getT } from "@/lib/i18n/server";
+import type { TFn } from "@/lib/i18n";
 import { NoteForm, ReplyForm, ScrollToBottom } from "./client-bits";
-import { ChannelBadge, inboxHref } from "./conversation-list";
+import { inboxHref } from "./conversation-list";
 import type { InboxParams } from "./page";
 
 type Message = ConversationDetail["messages"][number];
@@ -19,46 +23,57 @@ const TYPE_LABEL: Record<string, string> = {
   location: "লোকেশন",
   contacts: "কন্টাক্ট",
   postback: "বোতাম",
+  template: "টেমপ্লেট",
+  media_placeholder: "মিডিয়া",
   unsupported: "অসমর্থিত মেসেজ",
 };
 
-function senderLabel(m: Message): string | null {
+function senderLabel(m: Message, t: TFn): string | null {
   if (m.direction === "inbound") return null;
-  if (m.sentByBot) return "বট";
+  if (m.sentByBot) return t("বট");
   if (m.sentByUserName) return m.sentByUserName;
-  if (m.source === "phone_app") return "ফোন অ্যাপ থেকে";
-  if (m.source === "page_inbox") return "পেজ ইনবক্স থেকে";
+  if (m.source === "phone_app") return t("ফোন অ্যাপ থেকে");
+  if (m.source === "page_inbox") return t("পেজ ইনবক্স থেকে");
   return null;
 }
 
-const STATUS_LABEL: Record<Message["status"], string> = {
-  pending: "পাঠানো হচ্ছে",
-  sent: "পাঠানো হয়েছে",
-  delivered: "পৌঁছেছে",
-  read: "দেখা হয়েছে",
-  failed: "ব্যর্থ",
+const STATUS: Record<Message["status"], { label: string; icon: typeof Check }> = {
+  pending: { label: "পাঠানো হচ্ছে", icon: Clock },
+  sent: { label: "পাঠানো হয়েছে", icon: Check },
+  delivered: { label: "পৌঁছেছে", icon: CheckCheck },
+  read: { label: "দেখা হয়েছে", icon: CheckCheck },
+  failed: { label: "ব্যর্থ", icon: AlertCircle },
 };
 
-function Bubble({ m }: { m: Message }) {
+function Bubble({ m, t, intl }: { m: Message; t: TFn; intl: string }) {
   const out = m.direction === "outbound";
-  const label = senderLabel(m);
-  const media = m.type !== "text" ? (TYPE_LABEL[m.type] ?? m.type) : null;
+  const label = senderLabel(m, t);
+  const media = m.type !== "text" ? t(TYPE_LABEL[m.type] ?? m.type) : null;
+  const status = { ...STATUS[m.status], label: t(STATUS[m.status].label) };
+  const StatusIcon = status.icon;
 
   return (
-    <div className={`flex ${out ? "justify-end" : "justify-start"}`}>
+    <div className={cn("flex", out ? "justify-end" : "justify-start")}>
       <div
-        className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
-          out ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800"
-        } ${m.status === "failed" ? "ring-2 ring-red-500" : ""}`}
+        className={cn(
+          "max-w-[85%] px-4 py-2.5 text-[15px] shadow-card sm:max-w-[70%]",
+          out ? "rounded-2xl rounded-br-md bg-bubble-out text-bubble-out-fg" : "rounded-2xl rounded-bl-md border border-border bg-surface",
+          m.status === "failed" && "ring-2 ring-danger",
+        )}
       >
-        {label && <div className="mb-0.5 text-[11px] opacity-70">{label}</div>}
-        {media && <div className="mb-0.5 text-xs italic opacity-80">[{media}]</div>}
+        {label && <div className={cn("mb-0.5 text-xs font-medium", out ? "text-bubble-out-muted" : "text-muted")}>{label}</div>}
+        {media && <div className="mb-1 inline-flex rounded bg-black/10 px-1.5 py-0.5 text-xs">{media}</div>}
         {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
-        <div className="mt-1 flex items-center justify-end gap-2 text-[11px] opacity-70">
-          {out && <span>{STATUS_LABEL[m.status]}</span>}
-          <span title={formatFull(m.sentAt)}>{formatClock(m.sentAt)}</span>
+        <div className={cn("mt-1 flex items-center justify-end gap-1.5 text-xs", out ? "text-bubble-out-muted" : "text-muted")}>
+          {out && (
+            <span className="inline-flex items-center gap-1" title={status.label}>
+              <StatusIcon aria-hidden className={cn("size-3.5", m.status === "read" && "text-tick-read")} />
+              <span className="sr-only">{status.label}</span>
+            </span>
+          )}
+          <time title={formatFull(m.sentAt, intl)}>{formatClock(m.sentAt, intl)}</time>
         </div>
-        {m.status === "failed" && m.error && <div className="mt-1 text-[11px] text-red-300 dark:text-red-700">{m.error}</div>}
+        {m.status === "failed" && m.error && <div className="mt-1 text-xs font-medium">⚠ {t(m.error)}</div>}
       </div>
     </div>
   );
@@ -66,11 +81,11 @@ function Bubble({ m }: { m: Message }) {
 
 const WINDOW_TEXT = {
   no_customer_message: "এই গ্রাহক এখনো কোনো মেসেজ পাঠাননি, তাই উত্তর দেওয়া যাবে না।",
-  template_required: "২৪ ঘণ্টা পার হয়ে গেছে। WhatsApp-এ এখন শুধু অনুমোদিত template পাঠানো যায় (পরের ধাপে আসছে)।",
+  template_required: "২৪ ঘণ্টা পার হয়ে গেছে। WhatsApp-এ এখন শুধু অনুমোদিত template পাঠানো যায় (একজনকে আলাদা করে template পাঠানো এখনো যোগ হয়নি)।",
   expired: "উত্তর দেওয়ার সময় (Messenger-এ সর্বোচ্চ ৭ দিন) শেষ।",
 } as const;
 
-export function ConversationView({
+export async function ConversationView({
   detail,
   users,
   viewer,
@@ -81,6 +96,7 @@ export function ConversationView({
   viewer: { id: string; role: "admin" | "agent" };
   params: InboxParams;
 }) {
+  const { t, num, intl } = await getT();
   const { conversation: c, messages, notes } = detail;
   const name = c.contactName ?? c.identityDisplayName ?? c.identityExternalId;
   const win = replyWindow(c.channelType, c.lastCustomerMessageAt, { sender: "human" });
@@ -91,95 +107,118 @@ export function ConversationView({
 
   return (
     <>
-      <header className="space-y-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <div className="flex items-center gap-2">
-          <Link href={inboxHref(params, { c: null })} className="text-sm underline md:hidden">
-            ← তালিকা
+      <header className="space-y-3 border-b border-border bg-surface px-3 py-3.5 sm:px-5">
+        <div className="flex items-center gap-3">
+          <Link href={inboxHref(params, { c: null })} aria-label={t("তালিকায় ফিরুন")} className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-2 md:hidden">
+            <ArrowLeft aria-hidden className="size-5" />
           </Link>
-          <h2 className="truncate text-base font-semibold">{name}</h2>
-          <ChannelBadge type={c.channelType} />
-          <span className="truncate text-xs text-zinc-500">{c.channelName}</span>
+          <Avatar name={name} channel={c.channelType} size="lg" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-lg font-bold tracking-tight">{name}</h2>
+              <ChannelBadge type={c.channelType} />
+              {closed && <Badge>{t("বন্ধ")}</Badge>}
+            </div>
+            <p className="truncate text-sm text-muted">
+              {c.identityExternalId} · {c.channelName} ·{" "}
+              <Link href={`/contacts/${c.contactId}`} className="text-brand underline-offset-2 hover:underline">
+                {t("কন্টাক্ট দেখুন")}
+              </Link>
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <span className="text-zinc-500">{c.identityExternalId}</span>
-          <Link href={`/contacts/${c.contactId}`} className="underline">কন্টাক্ট দেখুন</Link>
 
-          <form action={assignAction} className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={assignAction} className="flex items-center gap-2">
             <input type="hidden" name="conversationId" value={c.id} />
-            <label htmlFor="assign" className="text-zinc-500">দায়িত্বে:</label>
+            <label htmlFor="assign" className="sr-only">{t("দায়িত্বে কে")}</label>
+            <UserRound aria-hidden className="size-4 text-muted" />
             {/* key: React resets the form after the action, so remount to show the new server value */}
-            <select key={c.assignedUserId ?? "none"} id="assign" name="userId" defaultValue={c.assignedUserId ?? ""} className="rounded border border-zinc-300 bg-transparent px-1 py-0.5 dark:border-zinc-700">
-              <option value="">— কেউ নেই —</option>
+            <select key={c.assignedUserId ?? "none"} id="assign" name="userId" defaultValue={c.assignedUserId ?? ""} className={cn(fieldClass, "min-h-9 w-auto py-1")}>
+              <option value="">{t("দায়িত্বে কেউ নেই")}</option>
               {assignable.map((u) => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
-              {c.assignedUserId && !assignable.some((u) => u.id === c.assignedUserId) && (
-                <option value={c.assignedUserId}>{c.assigneeName}</option>
-              )}
+              {c.assignedUserId && !assignable.some((u) => u.id === c.assignedUserId) && <option value={c.assignedUserId}>{c.assigneeName}</option>}
             </select>
-            <button type="submit" className="rounded border border-zinc-300 px-2 py-0.5 dark:border-zinc-700">সেট</button>
+            <button type="submit" className={buttonClass("secondary", "sm")}>{t("সেট")}</button>
           </form>
 
           <form action={statusAction}>
             <input type="hidden" name="conversationId" value={c.id} />
             <input type="hidden" name="status" value={closed ? "open" : "closed"} />
-            <button type="submit" className="rounded border border-zinc-300 px-2 py-0.5 dark:border-zinc-700">
-              {closed ? "আবার খুলুন" : "বন্ধ করুন"}
+            <button type="submit" className={buttonClass("secondary", "sm")}>
+              {closed ? <RotateCcw aria-hidden className="size-4" /> : <CircleCheck aria-hidden className="size-4" />}
+              {closed ? t("আবার খুলুন") : t("সমাধান হয়েছে")}
             </button>
           </form>
 
-          {c.needsHuman && (
-            <span className="rounded bg-red-100 px-2 py-0.5 text-red-800 dark:bg-red-900/40 dark:text-red-200">🙋 bot উত্তর দিতে পারেনি, মানুষ দরকার</span>
-          )}
           {c.botPaused && !c.needsHuman && (
-            <form action={resumeBotAction} className="flex items-center gap-1">
+            <form action={resumeBotAction}>
               <input type="hidden" name="conversationId" value={c.id} />
-              <span className="text-amber-700 dark:text-amber-400">মানুষ উত্তর দিয়েছে, bot বন্ধ</span>
-              <button type="submit" className="rounded border border-zinc-300 px-2 py-0.5 dark:border-zinc-700">bot চালু করুন</button>
+              <button type="submit" className={buttonClass("secondary", "sm")} title={t("মানুষ উত্তর দিয়েছে বলে bot বন্ধ আছে")}>
+                <Bot aria-hidden className="size-4" />
+                {t("bot আবার চালু করুন")}
+              </button>
             </form>
           )}
         </div>
+
+        {c.needsHuman && (
+          <Alert tone="danger">
+            <strong>{t("bot উত্তর দিতে পারেনি, একজন মানুষ দরকার।")}</strong> {t("আপনি উত্তর দিলে বা কথোপকথন সমাধান করলে এই চিহ্ন সরে যাবে।")}
+          </Alert>
+        )}
       </header>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
-        {messages.length === 0 && <p className="text-sm text-zinc-500">কোনো মেসেজ নেই।</p>}
+      <div className="scroll-thin min-h-0 flex-1 space-y-3 overflow-y-auto bg-bg px-3 py-4 sm:px-4">
+        {messages.length === 0 && <p className="py-8 text-center text-sm text-muted">{t("কোনো মেসেজ নেই।")}</p>}
         {messages.map((m, i) => {
           const showDay = i === 0 || !sameDay(messages[i - 1].sentAt, m.sentAt);
           return (
-            <div key={m.id} className="space-y-2">
-              {showDay && <div className="py-1 text-center text-xs text-zinc-500">{formatDayLabel(m.sentAt)}</div>}
-              <Bubble m={m} />
+            <div key={m.id} className="space-y-3">
+              {showDay && (
+                <div className="flex justify-center">
+                  <span className="rounded-full border border-border bg-surface px-3 py-0.5 text-xs font-medium text-muted shadow-card">{formatDayLabel(m.sentAt, new Date(), intl, t("আজ"))}</span>
+                </div>
+              )}
+              <Bubble m={m} t={t} intl={intl} />
             </div>
           );
         })}
         <ScrollToBottom trigger={`${c.id}:${messages.length}:${messages.at(-1)?.status ?? ""}`} />
       </div>
 
-      <div className="space-y-3 border-t border-zinc-200 p-3 dark:border-zinc-800">
-        <details open={notes.length > 0} className="text-sm">
-          <summary className="cursor-pointer text-zinc-600 dark:text-zinc-400">নোট ({notes.length})</summary>
-          <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto">
-            {notes.map((n) => (
-              <li key={n.id} className="rounded bg-amber-50 px-2 py-1 dark:bg-amber-900/20">
-                <span className="whitespace-pre-wrap break-words">{n.body}</span>
-                <span className="ml-2 text-[11px] text-zinc-500">{n.userName ?? "—"} · {formatFull(n.createdAt)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-2">
+      <div className="space-y-3 border-t border-border bg-surface p-3 sm:px-4">
+        {win.mode === "closed" && <Alert tone="warning">{t(WINDOW_TEXT[win.reason])}</Alert>}
+        {win.mode === "human_agent_only" && (
+          <Alert tone="info">{t("২৪ ঘণ্টা পার হয়েছে। আপনি এখনো উত্তর দিতে পারবেন (Human Agent), শেষ সময় {time}।", { time: formatFull(win.closesAt, intl) })}</Alert>
+        )}
+
+        <ReplyForm conversationId={c.id} disabled={win.mode === "closed"} />
+
+        <details open={notes.length > 0} className="group rounded-lg border border-border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-sm font-medium text-muted hover:text-fg">
+            <StickyNote aria-hidden className="size-4" />
+            {t("অভ্যন্তরীণ নোট")}
+            <Badge className="ml-1">{num(notes.length)}</Badge>
+          </summary>
+          <div className="space-y-3 border-t border-border p-3">
+            {notes.length > 0 && (
+              <ul className="scroll-thin max-h-40 space-y-2 overflow-y-auto">
+                {notes.map((n) => (
+                  <li key={n.id} className="rounded-lg bg-warning-soft px-3 py-2 text-sm">
+                    <p className="whitespace-pre-wrap break-words text-fg">{n.body}</p>
+                    <p className="mt-1 text-xs text-muted">
+                      {n.userName ?? "—"} · {formatFull(n.createdAt, intl)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
             <NoteForm conversationId={c.id} />
           </div>
         </details>
-
-        {win.mode === "closed" && (
-          <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">{WINDOW_TEXT[win.reason]}</p>
-        )}
-        {win.mode === "human_agent_only" && (
-          <p className="rounded bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:bg-sky-900/20 dark:text-sky-200">
-            ২৪ ঘণ্টা পার হয়েছে। আপনি এখনো উত্তর দিতে পারবেন (Human Agent), শেষ সময় {formatFull(win.closesAt)}।
-          </p>
-        )}
-        <ReplyForm conversationId={c.id} disabled={win.mode === "closed"} />
       </div>
     </>
   );
