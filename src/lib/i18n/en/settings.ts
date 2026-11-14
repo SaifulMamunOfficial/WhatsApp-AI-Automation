@@ -1,5 +1,17 @@
 // Settings pages (automation, knowledge base & AI, channels) and the messages their actions return.
 export const settings: Record<string, string> = {
+  // automation page
+  "bot গ্রাহকের মেসেজে কখন কী উত্তর দেবে, এখানে ঠিক করুন।": "Decide when and what the bot replies to customer messages.",
+  "উত্তরের ক্রম": "Order of replies",
+  "bot প্রতি মেসেজে একটাই উত্তর দেয়; ওপরের নিয়ম আগে মিললে নিচেরগুলো যায় না। মানুষ উত্তর দিলে ওই কথোপকথনে bot নিজে থেকেই থেমে যায়।": "The bot sends one reply per message; if a rule higher up matches, the ones below it are skipped. When a person replies, the bot stops by itself in that conversation.",
+  "Keyword": "Keyword",
+  "AI": "AI",
+  "ছুটির বার্তা": "Holiday message",
+  "এখনো লেখা হয়নি": "Not written yet",
+  "ছুটির দিনের আলাদা বার্তা": "A separate message for holidays is set on the",
+  "{n}টি নিয়ম": "{n} rules",
+  "নিচের ফর্ম থেকে প্রথমটা যোগ করুন।": "Add the first one with the form below.",
+  "কখন মিলবে": "When it matches",
   // configuration (AI providers)
   "পটভূমির কাজ": "Background jobs",
   "bot-এর উত্তর, AI আর ফাইল নামানোর কাজ এই তালিকায় জমা থাকে, সার্ভার রিস্টার্ট হলেও হারায় না। ব্যর্থ হলে নিজে থেকে কয়েকবার আবার চেষ্টা হয়।": "Bot replies, AI answers and file downloads are kept in this queue and are not lost when the server restarts. If one fails it is retried a few times automatically.",

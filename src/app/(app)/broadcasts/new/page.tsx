@@ -8,7 +8,8 @@ import { eligibleRecipients } from "@/core/broadcast/engine";
 import { db } from "@/db";
 import { channels, tags, templates } from "@/db/schema";
 import { NewBroadcastForm } from "./new-form";
-import { buttonClass, fieldClass } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
+import { Card, PageHeader, PageShell, buttonClass, fieldClass } from "@/components/ui";
 import { getT } from "@/lib/i18n/server";
 
 export const metadata = { title: "New broadcast — Saimum CRM" };
@@ -45,15 +46,16 @@ async function Content({ searchParams }: { searchParams: SP }) {
   const body = template ? templateBodyText(template.components) : "";
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
-      <Link href="/broadcasts" className="text-sm underline">← Broadcast</Link>
-      <h1 className="text-2xl font-bold tracking-tight">{tr("নতুন broadcast")}</h1>
+    <PageShell>
+      <Link href="/broadcasts" className="inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline"><ArrowLeft aria-hidden className="size-4" />Broadcast</Link>
+      <PageHeader title={tr("নতুন broadcast")} />
 
       {wa.length === 0 ? (
         <p className="text-sm text-muted">{tr("কোনো WhatsApp চ্যানেল নেই।")}</p>
       ) : (
-        <>
-          <form action="/broadcasts/new" className="space-y-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <Card className="p-4 sm:p-5">
+          <form action="/broadcasts/new" className="space-y-3">
             <label className="block text-sm">{tr("চ্যানেল বাছুন")}
               <select name="channelId" defaultValue={chosen?.id} className={`${field} mt-1`}>
                 {wa.map((c) => <option key={c.id} value={c.id}>{c.name}{c.isTest ? " (" + tr("টেস্ট") + ")" : ""}</option>)}
@@ -74,6 +76,7 @@ async function Content({ searchParams }: { searchParams: SP }) {
             <button type="submit" className={buttonClass("secondary", "sm")}>{tr("পরের ধাপ")}</button>
             {approved.length === 0 && <p className="text-sm text-warning">{tr("এই চ্যানেলে কোনো approved টেমপ্লেট নেই। আগে টেমপ্লেট পাতা থেকে sync বা জমা দিন।")}</p>}
           </form>
+          </Card>
 
           {template && chosen && reach !== null && (
             <NewBroadcastForm
@@ -86,8 +89,8 @@ async function Content({ searchParams }: { searchParams: SP }) {
               realChannel={!chosen.isTest}
             />
           )}
-        </>
+        </div>
       )}
-    </main>
+    </PageShell>
   );
 }

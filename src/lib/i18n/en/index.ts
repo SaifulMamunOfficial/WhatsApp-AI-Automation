@@ -1,6 +1,7 @@
 import { broadcast } from "./broadcast";
 import { contacts } from "./contacts";
 import { holidays } from "./holidays";
+import { adminPages } from "./admin-pages";
 import { analytics } from "./analytics";
 import { inbox } from "./inbox";
 import { media } from "./media";
@@ -16,6 +17,7 @@ export const EN: Record<string, string> = {
   ...team,
   ...inbox,
   ...analytics,
+  ...adminPages,
   ...holidays,
   ...media,
   ...quickReplies,

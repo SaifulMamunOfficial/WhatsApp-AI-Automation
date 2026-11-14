@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { AlertTriangle, KeyRound, ListChecks, Zap } from "lucide-react";
 import { requireRole } from "@/core/auth/dal";
 import { listProviderStatus } from "@/core/ai/config";
 import { queueSummary } from "@/core/jobs/queue";
 import { db } from "@/db";
-import { Alert, Badge, Card, PageHeader } from "@/components/ui";
+import { Alert, Badge, Card, PageHeader, PageShell, StatCard } from "@/components/ui";
 import { getT } from "@/lib/i18n/server";
 import { ProviderCard, type ProviderView } from "./provider-card";
 
@@ -33,8 +34,15 @@ async function Content() {
   const anyKey = statuses.some((s) => s.hasKey || s.envKey);
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
+    <PageShell>
       <PageHeader title={t("কনফিগারেশন")} description={t("AI bot (agent) কোন সেবার API key দিয়ে চলবে, এখানে ঠিক করুন।")} />
+
+      <section aria-label={t("মূল সংখ্যা")} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard icon={<KeyRound className="size-5" />} label={t("Key সেভ করা provider")} value={num(statuses.filter((s) => s.hasKey).length)} hint={t("মোট {n}টির মধ্যে", { n: num(statuses.length) })} />
+        <StatCard icon={<Zap className="size-5" />} label={t("bot যে provider ব্যবহার করছে")} value={anyActive ? META[statuses.find((s) => s.active && s.hasKey)!.provider].label : "—"} tone={anyActive ? "success" : undefined} />
+        <StatCard icon={<ListChecks className="size-5" />} label={t("পটভূমির কাজ অপেক্ষায়")} value={num(jobs.queued + jobs.running)} />
+        <StatCard icon={<AlertTriangle className="size-5" />} label={t("ব্যর্থ কাজ")} value={num(jobs.failed)} tone={jobs.failed > 0 ? "danger" : "success"} />
+      </section>
 
       {!anyKey && <Alert tone="warning">{t("কোনো API key নেই, তাই AI উত্তর বন্ধ আছে। স্বাগত মেসেজ, অফিস সময়ের নোটিস ও keyword মেনু AI ছাড়াই চলে।")}</Alert>}
       {anyKey && !anyActive && <Alert tone="info">{t("কোনো provider ‘চালু’ করা নেই; সার্ভারের .env-এর key (থাকলে) ব্যবহার হবে।")}</Alert>}
@@ -46,7 +54,7 @@ async function Content() {
             {t("Key সার্ভারে এনক্রিপ্ট করে রাখা হয় এবং এখানে আর কখনো দেখানো হয় না (শুধু শেষ ৪ অক্ষর)। একবারে একটাই provider চালু থাকে।")}
           </p>
         </div>
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3">
           {statuses.map((s) => (
             <ProviderCard key={s.provider} p={{ ...s, ...META[s.provider] }} />
           ))}
@@ -78,6 +86,6 @@ async function Content() {
         {t("AI যে তথ্য থেকে উত্তর দেয়, সেটা")}{" "}
         <Link href="/settings/knowledge" className="font-semibold text-brand hover:underline">{t("জ্ঞানভান্ডার ও AI")}</Link> {t("পেজে।")}
       </p>
-    </div>
+    </PageShell>
   );
 }

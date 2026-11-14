@@ -34,6 +34,9 @@ function buildPatterns(): Pattern[] {
   const list: Pattern[] = [];
   for (const [key, value] of Object.entries(EN)) {
     if (!/\{\w+\}/.test(key)) continue;
+    // A key that is almost all placeholder ("{n}টি") would match ANY text ending in those letters
+    // (e.g. "ছুটি" -> "ছু"). Such keys are only used with explicit values, never for pattern matching.
+    if (key.replace(/\{\w+\}/g, "").trim().length < 4) continue;
     const names: string[] = [];
     const source = key
       .split(/(\{\w+\})/)

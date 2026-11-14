@@ -11,7 +11,8 @@ import { broadcastRecipients, broadcasts, channels, contacts, templates } from "
 import { formatFull } from "@/lib/format";
 import { STATUS_LABEL } from "../page";
 import { StartForm } from "./start-form";
-import { buttonClass } from "@/components/ui";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, Users } from "lucide-react";
+import { Card, PageHeader, PageShell, StatCard, buttonClass } from "@/components/ui";
 import { getT } from "@/lib/i18n/server";
 
 export const metadata = { title: "Broadcast — Saimum CRM" };
@@ -54,29 +55,37 @@ async function Content({ params }: Props) {
   const preview = renderTemplate(templateBodyText(template.components), ((b.params as { kind: string; value?: string; fallback?: string }[]) ?? []).map((p) => (p.kind === "fixed" ? (p.value ?? "") : (p.fallback ?? ""))));
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
-      <Link href="/broadcasts" className="text-sm underline">← Broadcast</Link>
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{b.name}</h1>
-        <p className="text-sm text-muted">{row.channel}{row.isTest ? " (" + t("টেস্ট") + ")" : ""} · {t("টেমপ্লেট {name}", { name: template.name })} · {formatFull(b.createdAt, intl)}</p>
-      </div>
+    <PageShell>
+      <Link href="/broadcasts" className="inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline"><ArrowLeft aria-hidden className="size-4" />Broadcast</Link>
+      <PageHeader
+        title={b.name}
+        description={row.channel + (row.isTest ? " (" + t("টেস্ট") + ")" : "") + " · " + t("টেমপ্লেট {name}", { name: template.name }) + " · " + formatFull(b.createdAt, intl)}
+      />
 
-      <section className="space-y-1 rounded-xl border border-border bg-surface-2/50 p-3.5 text-sm">
-        <div className="font-medium">{t("অবস্থা:")} {t(STATUS_LABEL[b.status])}</div>
-        {b.pauseReason && <div className="text-warning">{t("কারণ:")} {t(b.pauseReason)}</div>}
-        <div>{t("মোট {total} · পাঠানো {sent} · ব্যর্থ {failed} · বাদ {skipped} · বাকি {left}", { total: num(b.totalCount), sent: num(b.sentCount), failed: num(b.failedCount), skipped: num(b.skippedCount), left: num(Math.max(0, pending)) })}</div>
-        <div className="mt-2 rounded bg-surface-2 p-2 whitespace-pre-wrap">{preview}</div>
-        <div className="text-xs text-muted">{t("উপরে প্রথম নামের জায়গায় বিকল্প লেখা দেখানো হয়েছে; আসলে প্রত্যেকের নাম বসবে।")}</div>
+      <section aria-label={t("মূল সংখ্যা")} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard icon={<Users className="size-5" />} label={t("মোট")} value={num(b.totalCount)} hint={t(STATUS_LABEL[b.status])} />
+        <StatCard icon={<CheckCircle2 className="size-5" />} label={t("পাঠানো")} value={num(b.sentCount)} tone="success" />
+        <StatCard icon={<AlertTriangle className="size-5" />} label={t("ব্যর্থ")} value={num(b.failedCount)} tone={b.failedCount > 0 ? "danger" : undefined} hint={t("বাদ") + " " + num(b.skippedCount)} />
+        <StatCard icon={<Clock className="size-5" />} label={t("বাকি")} value={num(Math.max(0, pending))} />
       </section>
 
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <Card className="space-y-2 p-4 sm:p-5">
+            <h2 className="text-base font-bold">{t("মেসেজের নমুনা")}</h2>
+            {b.pauseReason && <div className="text-sm text-warning">{t("কারণ:")} {t(b.pauseReason)}</div>}
+            <div className="rounded-xl bg-surface-2 p-3 text-sm whitespace-pre-wrap">{preview}</div>
+            <div className="text-xs text-muted">{t("উপরে প্রথম নামের জায়গায় বিকল্প লেখা দেখানো হয়েছে; আসলে প্রত্যেকের নাম বসবে।")}</div>
+          </Card>
+
       {(b.status === "draft" || b.status === "paused") && (
-        <section className="space-y-2 rounded-lg border border-danger/40 p-3">
+        <Card className="space-y-2 border-danger/40 p-4 sm:p-5">
           <h2 className="text-base font-bold">{b.status === "draft" ? t("পাঠানো শুরু") : t("আবার চালু")}</h2>
           <p className="text-sm text-muted">
             {t("{n} জনকে WhatsApp template মেসেজ যাবে, যার খরচ আছে এবং ফেরানো যায় না। শুরুর পর যেকোনো সময় থামানো যায়।", { n: num(b.totalCount) })}
           </p>
           <StartForm id={b.id} total={b.totalCount} />
-        </section>
+        </Card>
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -91,9 +100,11 @@ async function Content({ params }: Props) {
         )}
       </div>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-card sm:p-5">
+        </div>
+
+      <Card className="space-y-3 p-4 sm:p-5">
         <h2 className="text-base font-bold">{t("প্রাপক (প্রথম ৩০, ব্যর্থ আগে)")}</h2>
-        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card text-sm">
+        <ul className="divide-y divide-border text-sm">
           {sample.map(({ r, name }) => (
             <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5">
               <span>{name ?? t("নামহীন")} <span className="text-muted">{r.toNumber}</span></span>
@@ -104,7 +115,8 @@ async function Content({ params }: Props) {
             </li>
           ))}
         </ul>
-      </section>
-    </main>
+      </Card>
+      </div>
+    </PageShell>
   );
 }

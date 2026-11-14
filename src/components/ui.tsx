@@ -204,3 +204,25 @@ export function Avatar({ name, channel, size = "md" }: { name: string; channel?:
     </span>
   );
 }
+
+// ---- page layout shared by the admin / settings pages ---------------------------------
+
+/** Full-width page container (same on every admin page, so nothing is squeezed into a narrow column). */
+export function PageShell({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("mx-auto w-full max-w-[96rem] space-y-6 px-4 py-6 sm:px-8 sm:py-8", className)}>{children}</div>;
+}
+
+/** A number with a label, for the row of summary cards at the top of a page. */
+export function StatCard({ icon, label, value, hint, tone }: { icon: ReactNode; label: string; value: ReactNode; hint?: string; tone?: "success" | "danger" | "warning" }) {
+  const toneClass = tone === "success" ? "bg-success-soft text-success" : tone === "danger" ? "bg-danger-soft text-danger" : tone === "warning" ? "bg-warning-soft text-warning" : "bg-brand-soft text-brand";
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-3">
+        <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", toneClass)} aria-hidden>{icon}</span>
+        <p className="min-w-0 text-sm font-semibold text-muted">{label}</p>
+      </div>
+      <p className="mt-3 text-3xl font-bold tracking-tight">{value}</p>
+      {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+    </Card>
+  );
+}

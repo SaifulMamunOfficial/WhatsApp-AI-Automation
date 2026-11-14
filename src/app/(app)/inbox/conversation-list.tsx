@@ -4,44 +4,13 @@ import { Avatar, Badge, ChannelBadge, EmptyState, cn } from "@/components/ui";
 import type { ConversationRow } from "@/core/inbox/queries";
 import { formatListTime } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
+import { InboxFilters } from "./inbox-filters";
+import { inboxHref } from "./inbox-href";
 import type { InboxParams } from "./page";
 
 export { ChannelBadge };
 
-/** Builds an /inbox URL from the current params with some overrides; drops defaults. */
-export function inboxHref(params: InboxParams, override: Partial<Record<keyof InboxParams, string | null>> = {}): string {
-  const merged: Record<string, string | null | undefined> = { ...params, ...override };
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(merged)) {
-    if (!v) continue;
-    if (k === "assigned" && v === "all") continue;
-    if (k === "status" && v === "open") continue;
-    sp.set(k, v);
-  }
-  const qs = sp.toString();
-  return qs ? `/inbox?${qs}` : "/inbox";
-}
-
-/** One group of mutually exclusive filter choices, drawn as a segmented control. */
-function Segment({ label, options }: { label: string; options: { href: string; label: string; active: boolean }[] }) {
-  return (
-    <div role="group" aria-label={label} className="inline-flex rounded-xl bg-surface-2 p-1">
-      {options.map((o) => (
-        <Link
-          key={o.label}
-          href={o.href}
-          aria-current={o.active ? "true" : undefined}
-          className={cn(
-            "inline-flex min-h-9 items-center rounded-lg px-3 text-sm font-semibold transition-all duration-200",
-            o.active ? "bg-surface text-brand shadow-card" : "text-muted hover:text-fg",
-          )}
-        >
-          {o.label}
-        </Link>
-      ))}
-    </div>
-  );
-}
+export { inboxHref };
 
 export async function ConversationList({
   conversations,
@@ -53,8 +22,6 @@ export async function ConversationList({
   selectedId?: string;
 }) {
   const { t, num, intl } = await getT();
-  // The open conversation is deliberately dropped from filter links so changing a filter shows the list.
-  const f = (o: Partial<Record<keyof InboxParams, string | null>>) => inboxHref(params, { c: null, ...o });
 
   return (
     <>
@@ -81,42 +48,7 @@ export async function ConversationList({
           />
         </form>
 
-        <div className="flex flex-wrap gap-2">
-          <Segment
-            label={t("চ্যানেল")}
-            options={[
-              { href: f({ channel: null }), label: t("সব"), active: !params.channel },
-              { href: f({ channel: "whatsapp" }), label: "WhatsApp", active: params.channel === "whatsapp" },
-              { href: f({ channel: "messenger" }), label: "Messenger", active: params.channel === "messenger" },
-            ]}
-          />
-          <Segment
-            label={t("দায়িত্ব")}
-            options={[
-              { href: f({ assigned: "all" }), label: t("সব"), active: params.assigned === "all" },
-              { href: f({ assigned: "me" }), label: t("আমার"), active: params.assigned === "me" },
-              { href: f({ assigned: "unassigned" }), label: t("অনির্ধারিত"), active: params.assigned === "unassigned" },
-            ]}
-          />
-          <Segment
-            label={t("অবস্থা")}
-            options={[
-              { href: f({ status: "open" }), label: t("খোলা"), active: params.status === "open" },
-              { href: f({ status: "closed" }), label: t("বন্ধ"), active: params.status === "closed" },
-            ]}
-          />
-          <Link
-            href={f({ needs: params.needs ? null : "1" })}
-            aria-pressed={!!params.needs}
-            className={cn(
-              "inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors",
-              params.needs ? "bg-danger-soft text-danger" : "bg-surface-2 text-muted hover:text-fg",
-            )}
-          >
-            <UserRound aria-hidden className="size-4" />
-            {t("মানুষ দরকার")}
-          </Link>
-        </div>
+        <InboxFilters params={params} />
       </div>
 
       <ul className="scroll-thin min-h-0 flex-1 space-y-1 overflow-y-auto p-2">

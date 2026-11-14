@@ -5,6 +5,8 @@ export const inbox: Record<string, string> = {
   "নাম, নম্বর বা মেসেজ": "Name, number or message",
   "দায়িত্ব": "Assignee",
   "সব": "All",
+  "সবার": "Everyone's",
+  "সব অবস্থা": "Any status",
   "আমার": "Mine",
   "অনির্ধারিত": "Unassigned",
   "অবস্থা": "Status",
