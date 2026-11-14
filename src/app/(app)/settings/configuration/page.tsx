@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { requireRole } from "@/core/auth/dal";
 import { listProviderStatus } from "@/core/ai/config";
+import { queueSummary } from "@/core/jobs/queue";
 import { db } from "@/db";
-import { Alert, PageHeader } from "@/components/ui";
+import { Alert, Badge, Card, PageHeader } from "@/components/ui";
 import { getT } from "@/lib/i18n/server";
 import { ProviderCard, type ProviderView } from "./provider-card";
 
@@ -25,8 +26,9 @@ const META: Record<ProviderView["provider"], Pick<ProviderView, "label" | "vendo
 
 async function Content() {
   await requireRole("admin");
-  const { t } = await getT();
+  const { t, num } = await getT();
   const statuses = await listProviderStatus(db);
+  const jobs = await queueSummary(db);
   const anyActive = statuses.some((s) => s.active && s.hasKey);
   const anyKey = statuses.some((s) => s.hasKey || s.envKey);
 
@@ -49,6 +51,27 @@ async function Content() {
             <ProviderCard key={s.provider} p={{ ...s, ...META[s.provider] }} />
           ))}
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-bold">{t("পটভূমির কাজ")}</h2>
+          <p className="max-w-prose text-sm text-muted">{t("bot-এর উত্তর, AI আর ফাইল নামানোর কাজ এই তালিকায় জমা থাকে, সার্ভার রিস্টার্ট হলেও হারায় না। ব্যর্থ হলে নিজে থেকে কয়েকবার আবার চেষ্টা হয়।")}</p>
+        </div>
+        <Card className="space-y-3 p-4 sm:p-5">
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="info">{t("অপেক্ষায় {n}", { n: num(jobs.queued) })}</Badge>
+            <Badge tone="brand">{t("চলছে {n}", { n: num(jobs.running) })}</Badge>
+            <Badge tone={jobs.failed > 0 ? "danger" : "success"}>{t("{n}টি ব্যর্থ", { n: num(jobs.failed) })}</Badge>
+          </div>
+          {jobs.recentFailures.length > 0 && (
+            <ul className="space-y-1 text-sm text-muted">
+              {jobs.recentFailures.map((f) => (
+                <li key={f.id}><span className="font-mono">{f.queue}</span>: {f.error ?? "—"}</li>
+              ))}
+            </ul>
+          )}
+        </Card>
       </section>
 
       <p className="text-sm text-muted">

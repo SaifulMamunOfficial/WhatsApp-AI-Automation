@@ -17,6 +17,7 @@ export interface SessionUser {
   email: string;
   name: string;
   role: Role;
+  mustChangePassword: boolean;
 }
 
 async function setSessionCookie(token: string, expires: Date) {
@@ -60,6 +61,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       email: users.email,
       name: users.name,
       role: users.role,
+      mustChangePassword: users.mustChangePassword,
       expiresAt: sessions.expiresAt,
     })
     .from(sessions)
@@ -81,5 +83,5 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     }
   }
 
-  return { id: row.id, email: row.email, name: row.name, role: row.role };
+  return { id: row.id, email: row.email, name: row.name, role: row.role, mustChangePassword: row.mustChangePassword };
 });

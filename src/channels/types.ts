@@ -10,6 +10,15 @@ export type MessageDirection = "inbound" | "outbound";
 
 export type DeliveryStatus = "sent" | "delivered" | "read" | "failed";
 
+/** A file attached to a message, to be downloaded and stored by us (provider links expire quickly). */
+export interface MediaRef {
+  /** "whatsapp_id": a Cloud API media id (needs the channel token). "url": a direct link (Messenger). */
+  kind: "whatsapp_id" | "url";
+  ref: string;
+  mimeType?: string;
+  fileName?: string;
+}
+
 export interface NormalizedMessage {
   channelType: ChannelType;
   /** Provider id of our channel: WhatsApp phone_number_id / Facebook Page id. Maps to channels.external_id. */
@@ -29,6 +38,8 @@ export interface NormalizedMessage {
   timestamp: Date;
   /** Delivery state when the provider reports it with the message (history import). Defaults to "sent". */
   status?: DeliveryStatus | "pending";
+  /** The attached file, for image/audio/video/document/sticker messages. */
+  media?: MediaRef;
   /** Raw provider message object for debugging; never shown to users. */
   raw?: unknown;
 }
@@ -108,6 +119,20 @@ export interface SendTextInput {
   humanAgent?: boolean;
 }
 
+/** One image to send (JPEG or PNG). The adapter uploads it to the provider, then sends it. */
+export interface SendImageInput {
+  channelExternalId: string;
+  /** Decrypted access token. Never log it. */
+  accessToken: string;
+  to: string;
+  bytes: Uint8Array;
+  mimeType: "image/jpeg" | "image/png";
+  fileName: string;
+  /** WhatsApp only: the text shown under the picture. */
+  caption?: string;
+  /** Messenger only: send outside the 24h window as a human agent. */
+  humanAgent?: boolean;
+}
 export interface SendResult {
   externalId: string;
 }
@@ -119,4 +144,5 @@ export interface ChannelAdapter {
   /** Parse a webhook payload. Must not throw on unknown events; returns nothing for them. */
   parseWebhook(payload: unknown): WebhookEvents;
   sendText(input: SendTextInput): Promise<SendResult>;
+  sendImage(input: SendImageInput): Promise<SendResult>;
 }

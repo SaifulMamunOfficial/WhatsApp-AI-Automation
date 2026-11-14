@@ -50,6 +50,48 @@
       "when": 1794061515680,
       "tag": "0006_messy_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794666482007,
+      "tag": "0007_shiny_risque",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794666923635,
+      "tag": "0008_dapper_la_nuit",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794667271451,
+      "tag": "0009_shallow_ink",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794667865323,
+      "tag": "0010_green_bushwacker",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794668155778,
+      "tag": "0011_neat_hardball",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794668978777,
+      "tag": "0012_young_thunderbird",
+      "breakpoints": true
     }
   ]
 }

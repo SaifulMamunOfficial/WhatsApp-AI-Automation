@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, KeyRound, LayoutDashboard, Megaphone, MessageSquare, Plug, Users, Zap, type LucideIcon } from "lucide-react";
+import { BarChart3, BookOpen, CalendarOff, KeyRound, LayoutDashboard, Megaphone, MessageSquare, MessageSquareText, Plug, UserCog, Users, Zap, type LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "./ui";
 
@@ -19,6 +19,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { href: "/dashboard", label: "ড্যাশবোর্ড", icon: LayoutDashboard },
       { href: "/inbox", label: "ইনবক্স", icon: MessageSquare },
+      { href: "/analytics", label: "বিশ্লেষণ", icon: BarChart3, adminOnly: true },
       { href: "/contacts", label: "কন্টাক্ট", icon: Users },
     ],
   },
@@ -27,8 +28,11 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "সেটিংস",
     items: [
       { href: "/settings/automations", label: "অটোমেশন", icon: Zap, adminOnly: true },
+      { href: "/settings/holidays", label: "ছুটির দিন", icon: CalendarOff, adminOnly: true },
+      { href: "/settings/quick-replies", label: "দ্রুত উত্তর", icon: MessageSquareText, adminOnly: true },
       { href: "/settings/knowledge", label: "জ্ঞানভান্ডার ও AI", icon: BookOpen, adminOnly: true },
       { href: "/settings/channels", label: "চ্যানেল", icon: Plug, adminOnly: true },
+      { href: "/settings/team", label: "টিম", icon: UserCog, adminOnly: true },
       { href: "/settings/configuration", label: "কনফিগারেশন", icon: KeyRound, adminOnly: true },
     ],
   },

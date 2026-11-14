@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { requireRole, requireUser } from "@/core/auth/dal";
 import { db } from "@/db";
 import { importContactsCsv, MAX_IMPORT_BYTES, type ImportResult } from "./import";
-import { addTagToContact, createTag, deleteTag, mergeContacts, removeTagFromContact, renameTag, updateContact } from "./mutations";
+import { addTagToContact, createTag, deleteTag, mergeContacts, removeTagFromContact, renameTag, tagContactByName, updateContact } from "./mutations";
 
 // Every action re-checks the session; merge, import and tag deletion are admin-only because
 // they change many records at once and cannot be undone.
@@ -14,6 +14,7 @@ import { addTagToContact, createTag, deleteTag, mergeContacts, removeTagFromCont
 const id = z.uuid();
 const refresh = (contactId?: string) => {
   revalidatePath("/contacts");
+  revalidatePath("/inbox");
   if (contactId) revalidatePath(`/contacts/${contactId}`);
 };
 
@@ -52,6 +53,21 @@ export async function addTagAction(formData: FormData): Promise<void> {
   const t = id.safeParse(formData.get("tagId"));
   if (c.success && t.success) await addTagToContact(db, c.data, t.data);
   refresh(c.success ? c.data : undefined);
+}
+
+export interface TagByNameState {
+  error?: string;
+  okAt?: number;
+}
+
+/** Inbox: type a tag name, it is created if new and put on the contact. */
+export async function tagByNameAction(_prev: TagByNameState, formData: FormData): Promise<TagByNameState> {
+  await requireUser();
+  const c = id.safeParse(formData.get("contactId"));
+  if (!c.success) return { error: "ভুল অনুরোধ।" };
+  const r = await tagContactByName(db, c.data, String(formData.get("name") ?? ""));
+  refresh(c.data);
+  return r.ok ? { okAt: Date.now() } : { error: r.error };
 }
 
 export async function removeTagAction(formData: FormData): Promise<void> {

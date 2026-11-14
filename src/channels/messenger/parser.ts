@@ -42,6 +42,17 @@ export function parseMessengerWebhook(payload: unknown, opts: MessengerParseOpti
   return out;
 }
 
+const FILE_TYPES: ReadonlySet<string> = new Set(["image", "audio", "video", "file"]);
+
+/** The download link of a Messenger attachment (only the first attachment of a message is kept). */
+function attachmentMedia(att: Obj | undefined): NormalizedMessage["media"] {
+  if (!att) return undefined;
+  const type = str(att.type);
+  if (!type || !FILE_TYPES.has(type) || !isObj(att.payload)) return undefined;
+  const url = str(att.payload.url);
+  return url ? { kind: "url", ref: url } : undefined;
+}
+
 function parseEvent(event: Obj, entryPageId: string | undefined, opts: MessengerParseOptions): NormalizedMessage | null {
   const senderId = idOf(event.sender);
   const recipientId = idOf(event.recipient);
@@ -56,6 +67,7 @@ function parseEvent(event: Obj, entryPageId: string | undefined, opts: Messenger
     const attachments = arr(m.attachments).filter(isObj);
     const type = attachments.length ? (str(attachments[0].type) ?? "attachment") : "text";
     const text = str(m.text);
+    const media = attachmentMedia(attachments[0]);
     const isEcho = m.is_echo === true;
 
     if (isEcho) {
@@ -73,6 +85,7 @@ function parseEvent(event: Obj, entryPageId: string | undefined, opts: Messenger
         source: sentByUs ? "api" : "page_inbox",
         type,
         text,
+        media,
         timestamp,
         raw: m,
       };
@@ -87,6 +100,7 @@ function parseEvent(event: Obj, entryPageId: string | undefined, opts: Messenger
       source: "api",
       type,
       text,
+      media,
       timestamp,
       raw: m,
     };

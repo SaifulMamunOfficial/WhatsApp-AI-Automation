@@ -58,7 +58,7 @@ async function ChannelsContent() {
                 <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">{c.type === "whatsapp" ? "WhatsApp" : "Messenger"}</span>
                 {c.isTest && <span className="rounded bg-warning-soft px-1.5 py-0.5 text-xs text-warning">{t("টেস্ট")}</span>}
                 <span className="text-muted">{c.status === "active" ? t("সক্রিয়") : c.status === "pending" ? t("অপেক্ষায়") : t("বিচ্ছিন্ন")}</span>
-                <span className="text-muted">{c.botEnabled ? t("bot চালু") : t("bot বন্ধ")}</span>
+                <span className="text-muted">{!c.botEnabled ? t("bot বন্ধ") : c.botAfterHoursOnly ? t("bot: শুধু অফিস বন্ধে") : t("bot চালু")}</span>
               </div>
               {c.displayPhone && <div className="mt-1 text-muted">{c.displayPhone}</div>}
 

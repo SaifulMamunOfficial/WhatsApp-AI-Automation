@@ -1,7 +1,7 @@
 import { verifyMetaSignature } from "../meta-signature";
-import type { ChannelAdapter, SendResult, SendTextInput, WebhookEvents } from "../types";
+import type { ChannelAdapter, SendImageInput, SendResult, SendTextInput, WebhookEvents } from "../types";
 import { parseWhatsAppWebhook } from "./parser";
-import { sendWhatsAppText } from "./sender";
+import { sendWhatsAppImage, sendWhatsAppText } from "./sender";
 
 export const whatsappAdapter: ChannelAdapter = {
   type: "whatsapp",
@@ -13,5 +13,8 @@ export const whatsappAdapter: ChannelAdapter = {
   },
   sendText(input: SendTextInput): Promise<SendResult> {
     return sendWhatsAppText(input);
+  },
+  sendImage(input: SendImageInput): Promise<SendResult> {
+    return sendWhatsAppImage(input);
   },
 };

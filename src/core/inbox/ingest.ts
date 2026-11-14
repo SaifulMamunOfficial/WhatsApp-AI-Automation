@@ -29,6 +29,8 @@ export interface IngestResult {
   optedOut: number;
   /** Newly stored live customer messages: the automation engine runs on these. */
   newInbound: { conversationId: string; messageExternalId: string }[];
+  /** Newly stored messages with an attached file: ids of message_media rows waiting to be downloaded. */
+  newMedia: string[];
   failed: number;
 }
 
@@ -52,6 +54,7 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
     templatesUpdated: 0,
     optedOut: 0,
     newInbound: [],
+    newMedia: [],
     failed: 0,
   };
   let firstError: unknown;
@@ -60,9 +63,10 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
   const messages = [...events.messages].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   for (const m of messages) {
     try {
-      const { outcome, conversationId } = await ingestMessage(db, m);
+      const { outcome, conversationId, mediaId } = await ingestMessage(db, m);
       if (outcome === "stored") {
         result.stored++;
+        if (mediaId) result.newMedia.push(mediaId);
         // Published after the transaction committed, so listeners always see the data.
         if (conversationId) {
           publishInboxEvent({ type: "conversation", conversationId });
@@ -124,7 +128,7 @@ export async function ingestEvents(db: Db, events: WebhookEvents): Promise<Inges
 async function ingestMessage(
   db: Db,
   m: NormalizedMessage,
-): Promise<{ outcome: MessageOutcome; conversationId?: string }> {
+): Promise<{ outcome: MessageOutcome; conversationId?: string; mediaId?: string }> {
   const [channel] = await db
     .select({ id: schema.channels.id })
     .from(schema.channels)
@@ -161,8 +165,18 @@ async function ingestMessage(
       .returning({ id: schema.messages.id });
     if (inserted.length === 0) return { outcome: "duplicate" as const }; // lost a race with a concurrent delivery
 
+    let mediaId: string | undefined;
+    if (m.media) {
+      const [media] = await tx
+        .insert(schema.messageMedia)
+        .values({ messageId: inserted[0].id, refKind: m.media.kind, ref: m.media.ref, mimeType: m.media.mimeType ?? null, fileName: m.media.fileName ?? null })
+        .onConflictDoNothing()
+        .returning({ id: schema.messageMedia.id });
+      mediaId = media?.id;
+    }
+
     await touchConversation(tx, conversationId, m);
-    return { outcome: "stored" as const, conversationId };
+    return { outcome: "stored" as const, conversationId, mediaId };
   });
 }
 

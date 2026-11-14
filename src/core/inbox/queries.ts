@@ -100,9 +100,16 @@ export async function getConversation(db: Db, id: string) {
       sentByBot: schema.messages.sentByBot,
       sentByUserName: schema.users.name,
       sentAt: schema.messages.sentAt,
+      mediaId: schema.messageMedia.id,
+      mediaStatus: schema.messageMedia.status,
+      mediaMime: schema.messageMedia.mimeType,
+      mediaName: schema.messageMedia.fileName,
+      mediaSize: schema.messageMedia.sizeBytes,
+      mediaError: schema.messageMedia.error,
     })
     .from(schema.messages)
     .leftJoin(schema.users, eq(schema.users.id, schema.messages.sentByUserId))
+    .leftJoin(schema.messageMedia, eq(schema.messageMedia.messageId, schema.messages.id))
     .where(eq(schema.messages.conversationId, id))
     .orderBy(desc(schema.messages.sentAt))
     .limit(THREAD_LIMIT);
@@ -119,7 +126,27 @@ export async function getConversation(db: Db, id: string) {
     .where(eq(schema.conversationNotes.conversationId, id))
     .orderBy(asc(schema.conversationNotes.createdAt));
 
-  return { conversation, messages: latest.reverse(), notes };
+  const contactTags = await db
+    .select({ id: schema.tags.id, name: schema.tags.name, color: schema.tags.color })
+    .from(schema.contactTags)
+    .innerJoin(schema.tags, eq(schema.tags.id, schema.contactTags.tagId))
+    .where(eq(schema.contactTags.contactId, conversation.contactId))
+    .orderBy(asc(schema.tags.name));
+
+  return { conversation, messages: latest.reverse(), notes, contactTags };
+}
+
+/** What the "send a template" panel needs: the channel's approved templates and whether the contact opted in. */
+export async function getTemplatePanelData(db: Db, channelId: string, contactId: string) {
+  const [templates, [contact]] = await Promise.all([
+    db
+      .select({ id: schema.templates.id, name: schema.templates.name, language: schema.templates.language, category: schema.templates.category, components: schema.templates.components })
+      .from(schema.templates)
+      .where(and(eq(schema.templates.channelId, channelId), eq(schema.templates.status, "approved")))
+      .orderBy(asc(schema.templates.name)),
+    db.select({ optedIn: schema.contacts.optedIn }).from(schema.contacts).where(eq(schema.contacts.id, contactId)).limit(1),
+  ]);
+  return { templates, optedIn: !!contact?.optedIn };
 }
 
 export async function listAssignableUsers(db: Db) {

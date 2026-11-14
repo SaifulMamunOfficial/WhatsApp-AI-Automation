@@ -1,6 +1,11 @@
 // Settings pages (automation, knowledge base & AI, channels) and the messages their actions return.
 export const settings: Record<string, string> = {
   // configuration (AI providers)
+  "পটভূমির কাজ": "Background jobs",
+  "bot-এর উত্তর, AI আর ফাইল নামানোর কাজ এই তালিকায় জমা থাকে, সার্ভার রিস্টার্ট হলেও হারায় না। ব্যর্থ হলে নিজে থেকে কয়েকবার আবার চেষ্টা হয়।": "Bot replies, AI answers and file downloads are kept in this queue and are not lost when the server restarts. If one fails it is retried a few times automatically.",
+  "অপেক্ষায় {n}": "{n} waiting",
+  "{n}টি ব্যর্থ": "{n} failed",
+  "চলছে {n}": "{n} running",
   "কনফিগারেশন": "Configuration",
   "AI bot (agent) কোন সেবার API key দিয়ে চলবে, এখানে ঠিক করুন।": "Choose which service's API key the AI bot (agent) runs on.",
   "কোনো API key নেই, তাই AI উত্তর বন্ধ আছে। স্বাগত মেসেজ, অফিস সময়ের নোটিস ও keyword মেনু AI ছাড়াই চলে।": "There is no API key, so AI replies are off. The welcome message, after-hours notice and keyword menu work without AI.",
@@ -31,6 +36,12 @@ export const settings: Record<string, string> = {
   "এই provider-এর কোনো API key নেই।": "This provider has no API key.",
   "পরীক্ষা ব্যর্থ: {e}": "Test failed: {e}",
   // automation
+  "bot: শুধু অফিস বন্ধে": "bot: after hours only",
+  "bot-এর মোড": "Bot mode",
+  "শুধু অফিস বন্ধের সময়": "Only when office is closed",
+  "সবসময় চালু": "Always on",
+  "‘শুধু অফিস বন্ধের সময়’ মানে অফিস সময়ের বাইরে ও ছুটির দিনে bot উত্তর দেয়, অফিস খোলা থাকলে শুধু মানুষ। আসল নম্বরে প্রথমে এটা চালান, কিছুদিন দেখে ‘সবসময় চালু’ করুন।": "‘Only when office is closed’ means the bot answers outside office hours and on holidays, and only people answer while the office is open. On a real number start with this, and switch to ‘Always on’ after a few days of watching.",
+  "bot-এর মোড ঠিক নয়।": "The bot mode is not valid.",
   "Bot চালু/বন্ধ": "Bot on/off",
   "নতুন চ্যানেল bot বন্ধ অবস্থায় শুরু হয়। মানুষ (ফোন/পেজ ইনবক্স/CRM) উত্তর দিলে ওই কথোপকথনে bot নিজে থেকেই থেমে যায়।":
     "New channels start with the bot off. When a person replies (phone / Page inbox / CRM), the bot stops by itself in that conversation.",

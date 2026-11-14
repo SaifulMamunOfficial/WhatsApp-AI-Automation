@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { channels } from "./channels";
 
 export const automationKind = pgEnum("automation_kind", ["welcome", "keyword", "office_hours", "ai"]);
@@ -64,4 +64,17 @@ export const aiProviderSettings = pgTable("ai_provider_settings", {
   model: text("model"),
   active: boolean("active").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Days the office is closed (Eid, national holidays...). While a holiday is active the bot sends
+// its message instead of the after-hours notice and the welcome message (keyword answers and AI
+// answers still work). Dates are calendar days in the office time zone (Asia/Dhaka), inclusive.
+export const holidays = pgTable("holidays", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  startDate: date("start_date", { mode: "string" }).notNull(),
+  endDate: date("end_date", { mode: "string" }).notNull(),
+  text: text("text").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

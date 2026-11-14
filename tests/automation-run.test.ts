@@ -166,3 +166,50 @@ describe("automation runner", () => {
     expect(log).toHaveBeenCalledWith("automation failed", expect.anything());
   });
 });
+
+describe("holiday notice (through the runner)", () => {
+  const HOLIDAY_NOW = new Date("2026-03-21T08:00:00Z"); // 14:00 Dhaka: normally open, but a holiday
+
+  beforeEach(async () => {
+    await t.db.delete(schema.holidays);
+    await t.db.insert(schema.holidays).values([
+      { name: "ঈদ", startDate: "2026-03-20", endDate: "2026-03-22", text: "ঈদের ছুটি চলছে।" },
+      { name: "বন্ধ করা", startDate: "2026-03-21", endDate: "2026-03-21", text: "এটা যাবে না", enabled: false },
+    ]);
+  });
+
+  it("sends the holiday text instead of the welcome, once, and answers a keyword normally", async () => {
+    const { send, receive } = setup(HOLIDAY_NOW);
+    await receive(inbound({ text: "hello" }, HOLIDAY_NOW));
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0]).toMatchObject({ text: "ঈদের ছুটি চলছে।" });
+
+    await receive(inbound({ text: "okay" }, HOLIDAY_NOW));
+    expect(send).toHaveBeenCalledTimes(1); // cooldown: not again within 12 hours
+
+    await receive(inbound({ text: "মূল্য কত?" }, HOLIDAY_NOW));
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0]).toMatchObject({ text: "ফি ৫০০০ টাকা" });
+  });
+
+  it("is quiet about holidays on a normal day", async () => {
+    const { send, receive } = setup(OPEN_NOW);
+    await receive(inbound({ text: "hello" }));
+    expect(send.mock.calls[0][0]).toMatchObject({ text: "স্বাগতম! মেনু দেখতে 'menu' লিখুন।" });
+  });
+});
+
+describe("after-hours-only mode (through the runner)", () => {
+  it("does not answer while the office is open but answers outside office hours", async () => {
+    await t.db.update(schema.channels).set({ botAfterHoursOnly: true });
+    const open = setup(OPEN_NOW);
+    await open.receive(inbound({ text: "hello" }));
+    expect(open.send).not.toHaveBeenCalled();
+
+    await t.db.delete(schema.contacts); // a fresh customer for the night message
+    const night = setup(CLOSED_NOW);
+    await night.receive(inbound({ text: "hello", externalId: "night-1" }, CLOSED_NOW));
+    expect(night.send).toHaveBeenCalledTimes(1);
+    expect(night.send.mock.calls[0][0]).toMatchObject({ text: "এখন অফিস বন্ধ, সকাল ১০টায় উত্তর দেব।" });
+  });
+});

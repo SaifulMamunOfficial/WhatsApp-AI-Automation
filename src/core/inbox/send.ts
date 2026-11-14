@@ -7,7 +7,7 @@ import type { Db } from "./ingest";
 import { replyWindow } from "./window";
 
 export interface SendDeps {
-  adapterFor: (type: ChannelType) => Pick<ChannelAdapter, "sendText">;
+  adapterFor: (type: ChannelType) => Pick<ChannelAdapter, "sendText"> & Partial<Pick<ChannelAdapter, "sendImage">>;
   now?: () => Date;
 }
 

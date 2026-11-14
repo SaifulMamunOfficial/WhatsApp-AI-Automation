@@ -57,6 +57,20 @@ export async function deleteTag(db: Db, id: string): Promise<Result> {
   return done.length ? { ok: true } : { ok: false, error: "ট্যাগ পাওয়া যায়নি।" };
 }
 
+/** Puts a tag on a contact by name: reuses the tag if it exists (ignoring case), otherwise creates it first. */
+export async function tagContactByName(db: Db, contactId: string, nameInput: string): Promise<Result> {
+  const name = nameInput.trim().replace(/\s+/g, " ");
+  if (!name || name.length > MAX_TAG) return { ok: false, error: `ট্যাগের নাম ১–${MAX_TAG} অক্ষর হতে হবে।` };
+  const existing = await findTagByName(db, name);
+  let tagId = existing?.id;
+  if (!tagId) {
+    const created = await createTag(db, name);
+    if (!created.ok || !created.id) return { ok: false, error: created.ok ? "ট্যাগ বানানো যায়নি।" : created.error };
+    tagId = created.id;
+  }
+  return addTagToContact(db, contactId, tagId);
+}
+
 export async function addTagToContact(db: Db, contactId: string, tagId: string): Promise<Result> {
   const [c] = await db.select({ id: schema.contacts.id }).from(schema.contacts).where(eq(schema.contacts.id, contactId)).limit(1);
   const [t] = await db.select({ id: schema.tags.id }).from(schema.tags).where(eq(schema.tags.id, tagId)).limit(1);

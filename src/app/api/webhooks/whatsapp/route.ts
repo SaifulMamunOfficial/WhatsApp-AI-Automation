@@ -1,7 +1,7 @@
 import { whatsappAdapter } from "@/channels/whatsapp/adapter";
 import { handleDelivery, handleVerification } from "@/channels/webhook-handler";
 import { ingestEvents } from "@/core/inbox/ingest";
-import { scheduleAutomations } from "@/core/automation/after-ingest";
+import { queueAfterIngest } from "@/core/jobs/after-ingest";
 import { db } from "@/db";
 
 export async function GET(request: Request) {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     adapter: whatsappAdapter,
     ingest: async (events) => {
       const result = await ingestEvents(db, events);
-      scheduleAutomations(result); // runs after the 200 is sent
+      await queueAfterIngest(result); // durable queue (falls back to running after the 200 if it cannot be written)
       return result;
     },
     log: (message, err) => console.error(`[whatsapp-webhook] ${message}`, err),

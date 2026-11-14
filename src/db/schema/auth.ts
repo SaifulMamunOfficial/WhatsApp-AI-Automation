@@ -17,6 +17,10 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: userRole("role").notNull().default("agent"),
   active: boolean("active").notNull().default(true),
+  // Set when an admin creates the account or resets the password: the person must choose their own
+  // password before using anything else.
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -10,6 +10,7 @@ import { sendReply, type SendDeps, type SendReplyResult } from "@/core/inbox/sen
 import { parseAutomation, type Automation } from "./config";
 import { decideAutomation, type AutomationContext, type Decision } from "./engine";
 import { officeHoursFromEnv, type OfficeHours } from "./office-hours";
+import type { Holiday } from "./holiday-rules";
 
 export interface RunDeps {
   send: SendDeps;
@@ -86,7 +87,12 @@ export async function runAutomationForMessage(db: Db, deps: RunDeps, target: New
     : [];
   const aiAvailable = !!provider && articles.length > 0;
 
-  const ctx = baseCtx(row, inboundCount, previous?.at ?? null, lastBot?.at ?? null, deps, aiAvailable);
+  const holidayRows = await db
+    .select({ id: schema.holidays.id, name: schema.holidays.name, startDate: schema.holidays.startDate, endDate: schema.holidays.endDate, text: schema.holidays.text })
+    .from(schema.holidays)
+    .where(eq(schema.holidays.enabled, true));
+
+  const ctx = baseCtx(row, inboundCount, previous?.at ?? null, lastBot?.at ?? null, deps, aiAvailable, holidayRows);
   const decision = decideAutomation(automations, ctx);
 
   if (decision.action === "ai" && provider) {
@@ -163,9 +169,9 @@ async function markNeedsHuman(db: Db, conversationId: string, opts: { pauseBot: 
   publishInboxEvent({ type: "conversation", conversationId });
 }
 
-function baseCtx(row: Row, inboundCount: number, previousActivityAt: Date | null, lastBotReplyAt: Date | null, deps: RunDeps, aiAvailable: boolean): AutomationContext {
+function baseCtx(row: Row, inboundCount: number, previousActivityAt: Date | null, lastBotReplyAt: Date | null, deps: RunDeps, aiAvailable: boolean, holidays: Holiday[] = []): AutomationContext {
   return {
-    channel: { id: row.channel.id, botEnabled: row.channel.botEnabled },
+    channel: { id: row.channel.id, botEnabled: row.channel.botEnabled, afterHoursOnly: row.channel.botAfterHoursOnly },
     conversation: { botPaused: row.conversation.botPaused },
     message: { direction: row.message.direction, source: row.message.source, type: row.message.type, text: row.message.body },
     inboundCount,
@@ -174,6 +180,7 @@ function baseCtx(row: Row, inboundCount: number, previousActivityAt: Date | null
     now: deps.now?.() ?? new Date(),
     office: deps.office ?? officeHoursFromEnv(),
     aiAvailable,
+    holidays,
   };
 }
 

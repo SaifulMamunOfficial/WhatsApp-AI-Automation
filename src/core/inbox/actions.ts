@@ -7,6 +7,8 @@ import { requireUser } from "@/core/auth/dal";
 import { db } from "@/db";
 import { addNote, assignConversation, markRead, resumeBot, setConversationStatus, type MutationResult } from "./mutations";
 import { sendReply } from "./send";
+import { sendImageReply } from "./send-image";
+import { sendTemplateToConversation } from "./send-template";
 
 // Server Actions are public HTTP endpoints: every one re-checks the session and
 // validates its input, regardless of what the UI shows.
@@ -26,10 +28,44 @@ function finish(result: MutationResult): FormState {
   return done();
 }
 
+/** Staff send one approved WhatsApp template to this conversation's customer (after the 24h window). */
+export async function sendTemplateAction(_prev: FormState | undefined, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const conversationId = idSchema.safeParse(formData.get("conversationId"));
+  const templateId = idSchema.safeParse(formData.get("templateId"));
+  const count = z.coerce.number().int().min(0).max(20).safeParse(formData.get("varCount"));
+  if (!conversationId.success || !templateId.success || !count.success) return { error: "ভুল অনুরোধ।" };
+  const params = Array.from({ length: count.data }, (_, i) => String(formData.get(`p${i + 1}`) ?? ""));
+
+  const result = await sendTemplateToConversation(db, {}, { conversationId: conversationId.data, templateId: templateId.data, params, userId: user.id });
+  if (!result.ok) return { error: result.error };
+  revalidatePath("/inbox");
+  return done();
+}
+
 export async function replyAction(_prev: FormState | undefined, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const id = idSchema.safeParse(formData.get("conversationId"));
   if (!id.success) return { error: "ভুল অনুরোধ।" };
+
+  // A picture was attached: send it (the text becomes its caption).
+  const attached = formData.get("file");
+  if (attached instanceof File && attached.size > 0) {
+    const caption = String(formData.get("text") ?? "");
+    const sent = await sendImageReply(
+      db,
+      { adapterFor: getAdapter },
+      { conversationId: id.data, userId: user.id, file: { bytes: new Uint8Array(await attached.arrayBuffer()), mimeType: attached.type, fileName: attached.name || "photo" }, caption },
+    );
+    if (!sent.ok) return { error: sent.error };
+    // Messenger has no caption under a picture: send the text as a second message.
+    if (sent.captionAsText) {
+      const text = await sendReply(db, { adapterFor: getAdapter }, { conversationId: id.data, text: sent.captionAsText, sender: "human", userId: user.id });
+      if (!text.ok) return { error: text.error };
+    }
+    revalidatePath("/inbox");
+    return done();
+  }
 
   const result = await sendReply(
     db,

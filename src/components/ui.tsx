@@ -61,10 +61,10 @@ export const fieldClass =
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <label className="block space-y-1.5 text-sm">
-      <span className="font-semibold">{label}</span>
+    <label className="block text-sm">
+      <span className="mb-1.5 block font-semibold leading-snug">{label}</span>
       {children}
-      {hint && <span className="block text-xs text-muted">{hint}</span>}
+      {hint && <span className="mt-1.5 block text-xs text-muted">{hint}</span>}
     </label>
   );
 }
@@ -150,6 +150,16 @@ export function Alert({ tone = "info", children, className }: { tone?: keyof typ
       <Icon aria-hidden className="mt-0.5 size-[18px] shrink-0" />
       <div className="min-w-0 flex-1 text-fg [&_a]:underline">{children}</div>
     </div>
+  );
+}
+
+/** A tag: neutral pill with a dot in the tag's own colour (text stays readable whatever colour was picked). */
+export function TagChip({ name, color }: { name: string; color: string | null }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-fg">
+      <span aria-hidden className="size-2 rounded-full" style={{ background: color ?? "var(--muted)" }} />
+      {name}
+    </span>
   );
 }
 

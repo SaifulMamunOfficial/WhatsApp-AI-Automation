@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/core/auth/dal";
 import { db } from "@/db";
-import { addKeywordRule, deleteAutomation, saveSimpleAutomation, setAutomationEnabled, setBotEnabled } from "./admin";
+import { addKeywordRule, deleteAutomation, saveSimpleAutomation, setAutomationEnabled, setBotMode } from "./admin";
 
 // All automation settings are admin-only; every action re-checks the role.
 
@@ -45,9 +45,9 @@ export async function toggleAutomationAction(formData: FormData): Promise<void> 
   done();
 }
 
-export async function setBotEnabledAction(formData: FormData): Promise<void> {
+export async function setBotModeAction(formData: FormData): Promise<void> {
   await requireRole("admin");
   const i = id.safeParse(formData.get("channelId"));
-  if (i.success) await setBotEnabled(db, i.data, formData.get("enabled") === "true");
+  if (i.success) await setBotMode(db, i.data, String(formData.get("mode") ?? ""));
   done();
 }

@@ -99,3 +99,37 @@ export const conversationNotes = pgTable(
   },
   (t) => [index("conversation_notes_conversation_idx").on(t.conversationId)],
 );
+
+// Saved answers staff insert into the reply box by typing "/shortcut" (e.g. /office).
+export const quickReplies = pgTable("quick_replies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // Lowercase letters, digits, "-" and "_", without the leading slash. Unique.
+  shortcut: text("shortcut").notNull().unique(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const mediaStatus = pgEnum("media_status", ["pending", "downloading", "ready", "failed"]);
+
+// A file attached to a message. Provider links expire within minutes, so the file is downloaded
+// once and kept on our own disk (storage_key = file name under MEDIA_DIR); the inbox serves it from there.
+export const messageMedia = pgTable("message_media", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id")
+    .notNull()
+    .unique()
+    .references(() => messages.id, { onDelete: "cascade" }),
+  // "whatsapp_id" (Cloud API media id) or "url" (Messenger link); `ref` is that id or link.
+  refKind: text("ref_kind").notNull(),
+  ref: text("ref").notNull(),
+  mimeType: text("mime_type"),
+  fileName: text("file_name"),
+  status: mediaStatus("status").notNull().default("pending"),
+  error: text("error"),
+  storageKey: text("storage_key"),
+  sizeBytes: integer("size_bytes"),
+  attempts: integer("attempts").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

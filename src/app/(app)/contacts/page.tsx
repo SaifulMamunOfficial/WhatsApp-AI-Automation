@@ -8,7 +8,7 @@ import { CONTACTS_PAGE_SIZE, listContacts, listTagsWithCounts } from "@/core/con
 import { db } from "@/db";
 import { formatListTime } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
-import { Avatar, Card, EmptyState, PageHeader, buttonClass, cn, fieldClass } from "@/components/ui";
+import { Avatar, Card, EmptyState, PageHeader, TagChip, buttonClass, cn, fieldClass } from "@/components/ui";
 
 export const metadata = { title: "Contacts — Saimum CRM" };
 
@@ -31,15 +31,7 @@ export default function ContactsPage({ searchParams }: { searchParams: SearchPar
 
 const btn = buttonClass("secondary", "sm");
 
-/** A tag: neutral pill with a dot in the tag's own colour (text stays readable whatever colour was picked). */
-export function Chip({ name, color }: { name: string; color: string | null }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-fg">
-      <span aria-hidden className="size-2 rounded-full" style={{ background: color ?? "var(--muted)" }} />
-      {name}
-    </span>
-  );
-}
+export { TagChip as Chip };
 
 async function Content({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
@@ -146,7 +138,7 @@ async function Content({ searchParams }: { searchParams: SearchParams }) {
                           {c.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 pt-0.5">
                               {c.tags.map((t) => (
-                                <Chip key={t.id} name={t.name} color={t.color} />
+                                <TagChip key={t.id} name={t.name} color={t.color} />
                               ))}
                             </div>
                           )}
@@ -180,7 +172,7 @@ async function Content({ searchParams }: { searchParams: SearchParams }) {
             {tags.map((t) => (
               <li key={t.id} className="flex items-center">
                 <Link href={`/contacts?tag=${t.id}`} className={cn("rounded-full", p.tag === t.id && "ring-2 ring-brand ring-offset-2 ring-offset-surface")}>
-                  <Chip name={`${t.name} · ${num(t.count)}`} color={t.color} />
+                  <TagChip name={`${t.name} · ${num(t.count)}`} color={t.color} />
                 </Link>
                 {user.role === "admin" && (
                   <form action={deleteTagAction}>

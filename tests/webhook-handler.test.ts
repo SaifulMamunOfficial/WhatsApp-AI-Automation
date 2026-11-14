@@ -14,6 +14,7 @@ const adapter: ChannelAdapter = {
   verifySignature: (raw, header) => verifyMetaSignature(raw, header, SECRET),
   parseWebhook: parseWhatsAppWebhook,
   sendText: async () => ({ externalId: "x" }),
+  sendImage: async () => ({ externalId: "x" }),
 };
 
 const post = (raw: string, headers: Record<string, string> = {}) =>

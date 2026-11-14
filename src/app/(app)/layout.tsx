@@ -8,7 +8,7 @@ import { LanguageIconButton, LanguageSwitch } from "@/components/language-switch
 import { ThemeIconButton, ThemeSwitch } from "@/components/theme-switch";
 import { Avatar, Badge, LogoMark } from "@/components/ui";
 import { logout } from "@/core/auth/actions";
-import { requireUser } from "@/core/auth/dal";
+import { requireUserAllowingPasswordChange } from "@/core/auth/dal";
 import { db } from "@/db";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getT } from "@/lib/i18n/server";
@@ -34,7 +34,7 @@ function Brand() {
 }
 
 async function AuthShell({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  const user = await requireUserAllowingPasswordChange();
   const { locale, t } = await getT();
 
   // Open conversations with something unread: shown as a badge on the inbox link.
@@ -45,13 +45,13 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
 
   const userCard = (
     <div className="space-y-2 border-t border-border pt-3">
-      <div className="flex items-center gap-2.5 px-1">
+      <Link href="/settings/profile" title={t("আমার প্রোফাইল")} className="flex items-center gap-2.5 rounded-xl px-1 py-1 transition-colors hover:bg-surface-2">
         <Avatar name={user.name} size="sm" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{user.name}</p>
           <Badge tone={user.role === "admin" ? "brand" : "neutral"}>{user.role === "admin" ? t("অ্যাডমিন") : t("এজেন্ট")}</Badge>
         </div>
-      </div>
+      </Link>
       <LanguageSwitch />
       <ThemeSwitch />
       <form action={logout}>
@@ -94,13 +94,13 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
             <LanguageIconButton />
             <ThemeIconButton />
             <span className="mx-2 h-8 w-px bg-border" aria-hidden />
-            <div className="flex items-center gap-2.5">
+            <Link href="/settings/profile" title={t("আমার প্রোফাইল")} className="flex items-center gap-2.5 rounded-xl px-2 py-1 transition-colors hover:bg-surface-2">
               <Avatar name={user.name} size="sm" />
               <div className="min-w-0 leading-tight">
                 <p className="max-w-40 truncate text-sm font-semibold">{user.name}</p>
                 <p className="text-xs text-muted">{user.role === "admin" ? t("অ্যাডমিন") : t("এজেন্ট")}</p>
               </div>
-            </div>
+            </Link>
             <form action={logout}>
               <button type="submit" aria-label={t("লগআউট")} title={t("লগআউট")} className="ml-1 inline-flex size-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-danger-soft hover:text-danger">
                 <LogOut aria-hidden className="size-5" />

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import { ingestEvents } from "@/core/inbox/ingest";
-import { addTagToContact, createTag, deleteTag, mergeContacts, removeTagFromContact, renameTag, updateContact } from "@/core/contacts/mutations";
+import { addTagToContact, createTag, deleteTag, mergeContacts, removeTagFromContact, renameTag, tagContactByName, updateContact } from "@/core/contacts/mutations";
 import { getContactDetail, listContacts, listTagsWithCounts, searchContactsForMerge } from "@/core/contacts/queries";
 import { importContactsCsv, MAX_IMPORT_ROWS } from "@/core/contacts/import";
 import type { NormalizedMessage } from "@/channels/types";
@@ -261,5 +261,32 @@ describe("importContactsCsv", () => {
     const contacts = await t.db.select().from(schema.contacts);
     expect(contacts).toHaveLength(1);
     expect(contacts[0].name).toBe("Imported Name"); // the business's own label wins over the profile name
+  });
+});
+
+describe("tagContactByName (tags typed in the inbox)", () => {
+  it("creates a missing tag and puts it on the contact", async () => {
+    await ingestEvents(t.db, { messages: [msg({})], statuses: [] });
+    const id = await contactIdOf("8801711000001");
+    expect((await tagContactByName(t.db, id, "  VIP  customer ")).ok).toBe(true);
+    const tags = (await getContactDetail(t.db, id))!.tags;
+    expect(tags.map((x) => x.name)).toEqual(["VIP customer"]);
+  });
+
+  it("reuses an existing tag ignoring case instead of making a duplicate", async () => {
+    await ingestEvents(t.db, { messages: [msg({})], statuses: [] });
+    const id = await contactIdOf("8801711000001");
+    await createTag(t.db, "VIP");
+    expect((await tagContactByName(t.db, id, "vip")).ok).toBe(true);
+    expect((await tagContactByName(t.db, id, "VIP")).ok).toBe(true); // already on the contact: no error, no duplicate
+    expect((await listTagsWithCounts(t.db)).map((x) => [x.name, x.count])).toEqual([["VIP", 1]]);
+  });
+
+  it("rejects empty and too-long names and an unknown contact", async () => {
+    await ingestEvents(t.db, { messages: [msg({})], statuses: [] });
+    const id = await contactIdOf("8801711000001");
+    expect((await tagContactByName(t.db, id, "   ")).ok).toBe(false);
+    expect((await tagContactByName(t.db, id, "x".repeat(41))).ok).toBe(false);
+    expect((await tagContactByName(t.db, GHOST, "VIP")).ok).toBe(false);
   });
 });

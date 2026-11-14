@@ -47,6 +47,19 @@ function extractText(msg: Obj): string | undefined {
   }
 }
 
+const MEDIA_TYPES: ReadonlySet<string> = new Set(["image", "audio", "video", "document", "sticker"]);
+
+/** The Cloud API media id (and type/file name) of a media message, or undefined. */
+export function extractMedia(msg: Obj): NormalizedMessage["media"] {
+  const type = str(msg.type);
+  if (!type || !MEDIA_TYPES.has(type)) return undefined;
+  const content = msg[type];
+  if (!isObj(content)) return undefined;
+  const ref = str(content.id);
+  if (!ref) return undefined;
+  return { kind: "whatsapp_id", ref, mimeType: str(content.mime_type), fileName: str(content.filename) };
+}
+
 const STATUSES: ReadonlySet<string> = new Set(["sent", "delivered", "read", "failed"]);
 
 export function parseWhatsAppWebhook(payload: unknown): WebhookEvents {
@@ -226,6 +239,7 @@ function parseInbound(value: Obj, channelExternalId: string, out: WebhookEvents)
       source: "api",
       type,
       text: extractText(m),
+      media: extractMedia(m),
       timestamp: toDate(m.timestamp),
       raw: m,
     };
@@ -278,6 +292,7 @@ function parseEchoes(value: Obj, channelExternalId: string, out: WebhookEvents) 
       source: "phone_app",
       type,
       text: extractText(m),
+      media: extractMedia(m),
       timestamp: toDate(m.timestamp),
       raw: m,
     });

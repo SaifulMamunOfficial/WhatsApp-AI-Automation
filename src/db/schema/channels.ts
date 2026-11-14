@@ -31,6 +31,9 @@ export const channels = pgTable(
     isTest: boolean("is_test").notNull().default(false),
     // Master switch for bots on this channel (go-live: start with bots off).
     botEnabled: boolean("bot_enabled").notNull().default(false),
+    // With the bot on: answer only while the office is closed (outside office hours or on a holiday).
+    // The go-live plan starts here before turning the bot on around the clock.
+    botAfterHoursOnly: boolean("bot_after_hours_only").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("channels_type_external_id_unique").on(t.type, t.externalId)],

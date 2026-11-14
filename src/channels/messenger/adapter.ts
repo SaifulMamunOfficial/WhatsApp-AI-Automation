@@ -1,7 +1,7 @@
 import { verifyMetaSignature } from "../meta-signature";
-import type { ChannelAdapter, SendResult, SendTextInput, WebhookEvents } from "../types";
+import type { ChannelAdapter, SendImageInput, SendResult, SendTextInput, WebhookEvents } from "../types";
 import { parseMessengerWebhook } from "./parser";
-import { sendMessengerText } from "./sender";
+import { sendMessengerImage, sendMessengerText } from "./sender";
 
 export const messengerAdapter: ChannelAdapter = {
   type: "messenger",
@@ -13,5 +13,8 @@ export const messengerAdapter: ChannelAdapter = {
   },
   sendText(input: SendTextInput): Promise<SendResult> {
     return sendMessengerText(input);
+  },
+  sendImage(input: SendImageInput): Promise<SendResult> {
+    return sendMessengerImage(input);
   },
 };

@@ -185,6 +185,14 @@ src/
 - **যাচাইকৃত**: মোবাইল ৩৭৫px, ট্যাবলেট ৮২০px, ডেস্কটপ ১২৮০px, dark ও light; কনট্রাস্ট `scripts/check-contrast.mjs` দিয়ে মাপা (৫৪ জোড়া, লেখা ≥ ৪.৫:১, গ্রাফিক ≥ ৩:১)। **যাচাই হয়নি**: ১৪৪০px+, স্ক্রিন-রিডারে আসল পরীক্ষা, লগইন পেজের ছবি।
 - ফন্ট: Plus Jakarta Sans (ইংরেজি) + Hind Siliguri (বাংলা), `src/app/layout.tsx`-এ। ui-ux স্কিলের ডেটা (সার্চ-স্ক্রিপ্টসহ) একবার GitHub থেকে অস্থায়ী ফোল্ডারে নামানো হয়েছিল (প্রজেক্টের ভেতরে নয়), ব্যবহারকারীর অনুমতিতে।
 
+## টেকসই job queue (সবশেষে যোগ হয়েছে)
+
+- pg-boss নয়, **নিজস্ব ছোট Postgres queue** (`jobs` টেবিল, `src/core/jobs/`): নতুন লাইব্রেরি ছাড়া, PGlite-তে টেস্ট করা যায়। `enqueue` → `claimNext` (`FOR UPDATE SKIP LOCKED`, দুই worker একই কাজ পায় না) → `complete` / `fail` (১০সে, ২০সে, ৪০সে... সর্বোচ্চ ১০ মিনিট দেরিতে আবার চেষ্টা, `max_attempts`-এর পর ব্যর্থ)। ৫ মিনিটের বেশি `running` থাকা কাজ ক্র্যাশ ধরে আবার নেওয়া হয়।
+- Webhook শুধু কাজ queue-তে লেখে (`queueAfterIngest`) ও 200 দেয়। queue লেখা ব্যর্থ হলে আগের মতো `after()`-এ সরাসরি চালায়, bot চুপ হয় না। দুটো queue: `automation` (bot/AI উত্তর), `media` (ফাইল নামানো)। Broadcast আগের মতো নিজের resumable প্রাপক-সারিতে।
+- Worker `src/instrumentation.ts` থেকে সার্ভারের প্রসেসে একবার চালু (প্রতি ২ সেকেন্ডে দেখে, নতুন কাজে সাথে সাথে জাগে); `DISABLE_JOB_WORKER=true` দিয়ে বন্ধ। **একাধিক instance চালালেও নিরাপদ** (SKIP LOCKED)।
+- **দ্বিতীয় উত্তর ঠেকানো**: automation কাজ ক্র্যাশে আবার চললে `botAlreadyReplied` দেখে, গ্রাহকের মেসেজের পরে bot-এর উত্তর থাকলে ছেড়ে দেয়। Handler **throw করলে** retry; Meta উত্তর ফেরত দিলে retry নয় (দুবার পাঠানোর ঝুঁকি), সেটা মেসেজেই "ব্যর্থ" থাকে।
+- পুরনো `done` কাজ ৭ দিন, `failed` ৩০ দিন পরে মোছে। অবস্থা (অপেক্ষায়/চলছে/ব্যর্থ ও শেষ ৫টি কারণ) কনফিগারেশন পেজে।
+
 ## Docker ছাড়া ডেভ ডাটাবেস
 
 - `npm run dev:db` PGlite (আসল Postgres, WASM) চালায় `.env`-এর `DATABASE_URL`-এর পোর্টে (ওভাররাইড: `DEV_DB_PORT`); ডেটা `.pglite/`-এ (git-এ যায় না)। প্রথমবার `npm run db:seed-dev` ও `scripts/create-user.ts` দরকার।

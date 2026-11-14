@@ -31,7 +31,7 @@ export interface DashboardStats {
   days: DayPoint[];
   /** Bot replies / all replies over the 7 days, 0..1 (null when there were no replies). */
   botShare: number | null;
-  channels: { id: string; name: string; type: "whatsapp" | "messenger"; status: string; botEnabled: boolean; isTest: boolean; open: number }[];
+  channels: { id: string; name: string; type: "whatsapp" | "messenger"; status: string; botEnabled: boolean; botAfterHoursOnly: boolean; isTest: boolean; open: number }[];
   lastBroadcast: { id: string; name: string; status: string; total: number; sent: number; failed: number; createdAt: Date } | null;
 }
 
@@ -100,7 +100,7 @@ export async function getDashboardStats(db: Db, now = new Date()): Promise<Dashb
     days: points,
     botShare: replies === 0 ? null : bot / replies,
     channels: channelRows.map((c) => ({
-      id: c.id, name: c.name, type: c.type, status: c.status, botEnabled: c.botEnabled, isTest: c.isTest, open: openMap.get(c.id) ?? 0,
+      id: c.id, name: c.name, type: c.type, status: c.status, botEnabled: c.botEnabled, botAfterHoursOnly: c.botAfterHoursOnly, isTest: c.isTest, open: openMap.get(c.id) ?? 0,
     })),
     lastBroadcast: b ? { id: b.id, name: b.name, status: b.status, total: b.totalCount, sent: b.sentCount, failed: b.failedCount, createdAt: b.createdAt } : null,
   };

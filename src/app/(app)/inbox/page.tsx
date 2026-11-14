@@ -3,6 +3,10 @@ import { MessageSquare } from "lucide-react";
 import { z } from "zod";
 import { EmptyState } from "@/components/ui";
 import { requireUser } from "@/core/auth/dal";
+import { placeholderCount, templateBodyText } from "@/channels/whatsapp/templates";
+import { listTagsWithCounts } from "@/core/contacts/queries";
+import { getTemplatePanelData } from "@/core/inbox/queries";
+import { listQuickReplies } from "@/core/inbox/quick-replies";
 import { getT } from "@/lib/i18n/server";
 import { getConversation, listAssignableUsers, listConversations, type InboxFilters } from "@/core/inbox/queries";
 import { db } from "@/db";
@@ -50,11 +54,20 @@ async function InboxContent({ searchParams }: { searchParams: SearchParams }) {
   });
 
   const filters: InboxFilters = { channelType: params.channel, assigned: params.assigned, status: params.status, q: params.q, needsHuman: params.needs === "1" };
-  const [conversations, detail, users] = await Promise.all([
+  const [conversations, detail, users, quickReplies, allTags] = await Promise.all([
     listConversations(db, filters, user.id),
     params.c ? getConversation(db, params.c) : Promise.resolve(null),
     listAssignableUsers(db),
+    listQuickReplies(db),
+    listTagsWithCounts(db),
   ]);
+
+  // After 24 hours a WhatsApp customer can only be written to with an approved template.
+  const needsTemplate = detail?.conversation.channelType === "whatsapp";
+  const panel = detail && needsTemplate ? await getTemplatePanelData(db, detail.conversation.channelId, detail.conversation.contactId) : null;
+  const templatePanel = panel
+    ? { optedIn: panel.optedIn, templates: panel.templates.map((x) => { const body = templateBodyText(x.components); return { id: x.id, name: x.name, language: x.language, category: x.category, body, variables: placeholderCount(body) }; }) }
+    : undefined;
 
   return (
     <div className="flex h-full min-h-0">
@@ -66,7 +79,7 @@ async function InboxContent({ searchParams }: { searchParams: SearchParams }) {
         {detail ? (
           <>
             {detail.conversation.unreadCount > 0 && <MarkRead conversationId={detail.conversation.id} />}
-            <ConversationView detail={detail} users={users} viewer={user} params={params} />
+            <ConversationView detail={detail} users={users} viewer={user} params={params} quickReplies={quickReplies} allTags={allTags} templatePanel={templatePanel} />
           </>
         ) : (
           <EmptyState icon={<MessageSquare aria-hidden className="size-10" />} title={params.c ? t("কথোপকথন পাওয়া যায়নি") : t("একটি কথোপকথন বেছে নিন")} hint={params.c ? undefined : t("বাঁ দিকের তালিকা থেকে বেছে নিলে মেসেজ ও উত্তরের জায়গা এখানে খুলবে।")} />

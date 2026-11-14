@@ -82,6 +82,7 @@ export const contacts: Record<string, string> = {
   "রং #rrggbb ফরম্যাটে দিন।": "Give the colour in #rrggbb format.",
   "এই নামে ট্যাগ আগেই আছে।": "A tag with this name already exists.",
   "ট্যাগ পাওয়া যায়নি।": "Tag not found.",
+  "ট্যাগ বানানো যায়নি।": "The tag could not be created.",
   "কন্টাক্ট বা ট্যাগ পাওয়া যায়নি।": "Contact or tag not found.",
   "একই কন্টাক্ট নিজের সাথে মেলানো যায় না।": "A contact cannot be merged with itself.",
   "একটি WhatsApp চ্যানেল বেছে নিন।": "Choose a WhatsApp channel.",

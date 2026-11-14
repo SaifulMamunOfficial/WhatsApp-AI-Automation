@@ -148,7 +148,7 @@ async function Content() {
                   <span className="min-w-0 basis-full truncate font-semibold sm:basis-0 sm:flex-1">{c.name}</span>
                   {c.isTest && <Badge>{t("টেস্ট")}</Badge>}
                   <Badge tone={c.status === "active" ? "success" : "warning"}>{c.status === "active" ? t("সচল") : c.status === "pending" ? t("অপেক্ষায়") : t("বিচ্ছিন্ন")}</Badge>
-                  <span className="inline-flex items-center gap-1 text-sm text-muted"><Bot aria-hidden className="size-4" />{c.botEnabled ? t("bot চালু") : t("bot বন্ধ")}</span>
+                  <span className="inline-flex items-center gap-1 text-sm text-muted"><Bot aria-hidden className="size-4" />{!c.botEnabled ? t("bot বন্ধ") : c.botAfterHoursOnly ? t("bot: শুধু অফিস বন্ধে") : t("bot চালু")}</span>
                   <span className="text-sm text-muted">{t("খোলা {n}", { n: num(c.open) })}</span>
                 </li>
               ))}

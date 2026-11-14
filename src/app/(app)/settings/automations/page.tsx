@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { asc } from "drizzle-orm";
 import { requireRole } from "@/core/auth/dal";
-import { addKeywordAction, deleteAutomationAction, saveSimpleAction, setBotEnabledAction, toggleAutomationAction } from "@/core/automation/actions";
+import { addKeywordAction, deleteAutomationAction, saveSimpleAction, setBotModeAction, toggleAutomationAction } from "@/core/automation/actions";
+import { botModeOf } from "@/core/automation/bot-mode";
 import { parseAutomation } from "@/core/automation/config";
 import { officeHoursFromEnv } from "@/core/automation/office-hours";
 import { db } from "@/db";
@@ -41,17 +42,23 @@ async function Content() {
         <h1 className="text-2xl font-bold tracking-tight">{t("Bot চালু/বন্ধ")}</h1>
         <p className="text-sm text-muted">
           {t("নতুন চ্যানেল bot বন্ধ অবস্থায় শুরু হয়। মানুষ (ফোন/পেজ ইনবক্স/CRM) উত্তর দিলে ওই কথোপকথনে bot নিজে থেকেই থেমে যায়।")}
+          {" "}{t("‘শুধু অফিস বন্ধের সময়’ মানে অফিস সময়ের বাইরে ও ছুটির দিনে bot উত্তর দেয়, অফিস খোলা থাকলে শুধু মানুষ। আসল নম্বরে প্রথমে এটা চালান, কিছুদিন দেখে ‘সবসময় চালু’ করুন।")}
         </p>
         <ul className="space-y-2">
           {chs.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+            <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
               <span>
-                {c.name} <span className="text-muted">({c.type === "whatsapp" ? "WhatsApp" : "Messenger"})</span> — {c.botEnabled ? t("bot চালু") : t("bot বন্ধ")}
+                {c.name} <span className="text-muted">({c.type === "whatsapp" ? "WhatsApp" : "Messenger"})</span>
               </span>
-              <form action={setBotEnabledAction}>
+              <form action={setBotModeAction} className="flex w-full items-center gap-2 sm:w-auto">
                 <input type="hidden" name="channelId" value={c.id} />
-                <input type="hidden" name="enabled" value={String(!c.botEnabled)} />
-                <button type="submit" className={btn}>{c.botEnabled ? t("বন্ধ করুন") : t("চালু করুন")}</button>
+                {/* key: React resets the form after the action, so remount to show the new server value */}
+                <select key={botModeOf(c)} name="mode" defaultValue={botModeOf(c)} aria-label={t("bot-এর মোড")} className={`${field} min-h-9 min-w-0 flex-1 py-1 sm:w-60 sm:flex-none`}>
+                  <option value="off">{t("বন্ধ")}</option>
+                  <option value="after_hours">{t("শুধু অফিস বন্ধের সময়")}</option>
+                  <option value="always">{t("সবসময় চালু")}</option>
+                </select>
+                <button type="submit" className={btn}>{t("সেট")}</button>
               </form>
             </li>
           ))}

@@ -1,0 +1,1 @@
+ALTER TABLE "channels" ADD COLUMN "bot_after_hours_only" boolean DEFAULT false NOT NULL;

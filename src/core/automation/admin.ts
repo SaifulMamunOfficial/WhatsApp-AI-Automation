@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { Db } from "@/core/inbox/ingest";
+import { botModeColumns, isBotMode } from "./bot-mode";
 import { keywordConfig, officeHoursConfig, welcomeConfig } from "./config";
 
 // Admin-side changes to automation rules and the per-channel bot switch.
@@ -71,8 +72,16 @@ export async function setAutomationEnabled(db: Db, id: string, enabled: boolean)
  * Per-channel master switch. Go-live rule: new real channels start OFF; turn on first
  * out-of-hours only, then fully (docs/META_NOTES.md).
  */
+/** Off / only when the office is closed / always. */
+export async function setBotMode(db: Db, channelId: string, mode: string): Promise<AdminResult> {
+  if (!isBotMode(mode)) return { ok: false, error: "bot-এর মোড ঠিক নয়।" };
+  const c = schema.channels;
+  const done = await db.update(c).set(botModeColumns(mode)).where(eq(c.id, channelId)).returning({ id: c.id });
+  return done.length ? { ok: true } : { ok: false, error: "চ্যানেল পাওয়া যায়নি।" };
+}
+
 export async function setBotEnabled(db: Db, channelId: string, enabled: boolean): Promise<AdminResult> {
   const c = schema.channels;
-  const done = await db.update(c).set({ botEnabled: enabled }).where(eq(c.id, channelId)).returning({ id: c.id });
+  const done = await db.update(c).set({ botEnabled: enabled, botAfterHoursOnly: false }).where(eq(c.id, channelId)).returning({ id: c.id });
   return done.length ? { ok: true } : { ok: false, error: "চ্যানেল পাওয়া যায়নি।" };
 }

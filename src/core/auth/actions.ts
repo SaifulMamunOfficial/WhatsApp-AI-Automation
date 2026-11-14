@@ -41,6 +41,7 @@ export async function login(_prev: LoginState | undefined, formData: FormData): 
   }
 
   loginLimiter.reset(limiterKey);
+  await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
   await createSession(user.id);
   redirect("/");
 }
