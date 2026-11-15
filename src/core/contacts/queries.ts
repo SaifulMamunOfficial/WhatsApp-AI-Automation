@@ -7,6 +7,7 @@ export const CONTACTS_PAGE_SIZE = 50;
 export interface ContactFilters {
   q?: string;
   tagId?: string;
+  stageId?: string;
   channelType?: "whatsapp" | "messenger";
   page?: number;
 }
@@ -17,6 +18,9 @@ export interface ContactListItem {
   id: string;
   name: string | null;
   createdAt: Date;
+  stageId: string | null;
+  stageName: string | null;
+  stageColorKey: string | null;
   identities: { id: string; externalId: string; channelType: "whatsapp" | "messenger"; channelName: string }[];
   tags: { id: string; name: string; color: string | null }[];
   lastMessageAt: Date | null;
@@ -41,6 +45,9 @@ export async function listContacts(db: Db, f: ContactFilters): Promise<{ items: 
   if (f.tagId) {
     where.push(exists(db.select({ x: sql`1` }).from(schema.contactTags).where(and(eq(schema.contactTags.contactId, c.id), eq(schema.contactTags.tagId, f.tagId)))));
   }
+  if (f.stageId) {
+    where.push(eq(c.stageId, f.stageId));
+  }
   if (f.channelType) {
     where.push(
       exists(
@@ -62,8 +69,17 @@ export async function listContacts(db: Db, f: ContactFilters): Promise<{ items: 
   // subquery a bare "id" would bind to conversations.id instead of contacts.id (always null).
   const lastActivity = sql<Date | null>`(select max(cv."last_message_at") from "conversations" cv where cv."contact_id" = "contacts"."id")`;
   const rows = await db
-    .select({ id: c.id, name: c.name, createdAt: c.createdAt, lastMessageAt: lastActivity })
+    .select({
+      id: c.id,
+      name: c.name,
+      createdAt: c.createdAt,
+      lastMessageAt: lastActivity,
+      stageId: c.stageId,
+      stageName: schema.lifecycleStages.name,
+      stageColorKey: schema.lifecycleStages.colorKey,
+    })
     .from(c)
+    .leftJoin(schema.lifecycleStages, eq(schema.lifecycleStages.id, c.stageId))
     .where(cond)
     .orderBy(sql`${lastActivity} desc nulls last`, desc(c.createdAt))
     .limit(CONTACTS_PAGE_SIZE)
@@ -90,6 +106,9 @@ export async function listContacts(db: Db, f: ContactFilters): Promise<{ items: 
     id: r.id,
     name: r.name,
     createdAt: r.createdAt,
+    stageId: r.stageId,
+    stageName: r.stageName,
+    stageColorKey: r.stageColorKey,
     // The aggregate subquery can come back as a string from some drivers.
     lastMessageAt: r.lastMessageAt ? new Date(r.lastMessageAt) : null,
     identities: identities.filter((i) => i.contactId === r.id).map((i) => ({ id: i.id, externalId: i.externalId, channelType: i.channelType, channelName: i.channelName })),
@@ -99,7 +118,24 @@ export async function listContacts(db: Db, f: ContactFilters): Promise<{ items: 
 }
 
 export async function getContactDetail(db: Db, id: string) {
-  const [contact] = await db.select().from(schema.contacts).where(eq(schema.contacts.id, id)).limit(1);
+  const [contact] = await db
+    .select({
+      id: schema.contacts.id,
+      name: schema.contacts.name,
+      notes: schema.contacts.notes,
+      optedIn: schema.contacts.optedIn,
+      optedInAt: schema.contacts.optedInAt,
+      optInSource: schema.contacts.optInSource,
+      stageId: schema.contacts.stageId,
+      stageName: schema.lifecycleStages.name,
+      stageColorKey: schema.lifecycleStages.colorKey,
+      createdAt: schema.contacts.createdAt,
+      updatedAt: schema.contacts.updatedAt,
+    })
+    .from(schema.contacts)
+    .leftJoin(schema.lifecycleStages, eq(schema.lifecycleStages.id, schema.contacts.stageId))
+    .where(eq(schema.contacts.id, id))
+    .limit(1);
   if (!contact) return null;
 
   const identities = await db

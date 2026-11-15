@@ -1,11 +1,11 @@
 "use client";
 
-import { ImagePlus, Loader2, SendHorizontal, StickyNote, X } from "lucide-react";
+import { ImagePlus, Loader2, SendHorizontal, Sparkles, StickyNote, X } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
-import { buttonClass, fieldClass } from "@/components/ui";
+import { buttonClass, cn, fieldClass } from "@/components/ui";
 import { matchQuickReplies, slashQuery, type QuickReply } from "@/core/inbox/quick-reply-match";
 import { useI18n } from "@/lib/i18n/client";
-import { markReadAction, noteAction, replyAction } from "@/core/inbox/actions";
+import { aiDraftAction, markReadAction, noteAction, replyAction } from "@/core/inbox/actions";
 import type { FormState } from "@/core/inbox/actions";
 
 /** Keeps the newest message in view when the thread opens or grows. */
@@ -25,7 +25,19 @@ export function MarkRead({ conversationId }: { conversationId: string }) {
   return null;
 }
 
-export function ReplyForm({ conversationId, disabled, quickReplies = [] }: { conversationId: string; disabled: boolean; quickReplies?: QuickReply[] }) {
+export function ReplyForm({
+  conversationId,
+  disabled,
+  quickReplies = [],
+  aiAvailable = true,
+  aiDisabledReason,
+}: {
+  conversationId: string;
+  disabled: boolean;
+  quickReplies?: QuickReply[];
+  aiAvailable?: boolean;
+  aiDisabledReason?: "no_provider" | "no_knowledge";
+}) {
   const { t } = useI18n();
   const [state, action, pending] = useActionState<FormState, FormData>(replyAction, {});
   const areaRef = useRef<HTMLTextAreaElement>(null);
@@ -38,12 +50,33 @@ export function ReplyForm({ conversationId, disabled, quickReplies = [] }: { con
   // recommended way to reset state when a value changes.)
   const [clearedFor, setClearedFor] = useState(0);
   const [picture, setPicture] = useState<{ name: string; problem: string | null } | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   if (state.okAt && state.okAt !== clearedFor) {
     setClearedFor(state.okAt);
     setText("");
     setPicture(null);
+    setAiError(null);
   }
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleAiDraft() {
+    setAiBusy(true);
+    setAiError(null);
+    try {
+      const res = await aiDraftAction(conversationId);
+      if (res.ok) {
+        setText(res.draft);
+        requestAnimationFrame(() => areaRef.current?.focus());
+      } else {
+        setAiError(res.error);
+      }
+    } catch {
+      setAiError(t("এআই খসড়া তৈরিতে সমস্যা হয়েছে।"));
+    } finally {
+      setAiBusy(false);
+    }
+  }
 
   // Typing "/" first (and no space yet) opens the saved-replies menu.
   const query = slashQuery(text);
@@ -130,6 +163,30 @@ export function ReplyForm({ conversationId, disabled, quickReplies = [] }: { con
         >
           <ImagePlus aria-hidden className="size-4" />
         </button>
+        <button
+          type="button"
+          disabled={disabled || pending || aiBusy || !aiAvailable}
+          onClick={handleAiDraft}
+          aria-label={t("AI খসড়া")}
+          title={
+            !aiAvailable
+              ? aiDisabledReason === "no_knowledge"
+                ? t("জ্ঞানভাণ্ডার খালি থাকায় AI খসড়া নিষ্ক্রিয়")
+                : t("AI প্রোভাইডার না থাকায় খসড়া নিষ্ক্রিয়")
+              : t("AI দিয়ে উত্তরের খসড়া লিখুন (সরাসরি পাঠানো হবে না)")
+          }
+          className={cn(
+            buttonClass("secondary", "md", "h-11 shrink-0 gap-1.5 px-3 text-brand"),
+            !aiAvailable && "opacity-50 cursor-not-allowed text-muted",
+          )}
+        >
+          {aiBusy ? (
+            <Loader2 aria-hidden className="size-4 animate-spin" />
+          ) : (
+            <Sparkles aria-hidden className="size-4" />
+          )}
+          <span className="hidden sm:inline font-medium">{t("AI খসড়া")}</span>
+        </button>
         <textarea
           ref={areaRef}
           name="text"
@@ -184,6 +241,14 @@ export function ReplyForm({ conversationId, disabled, quickReplies = [] }: { con
           {pending ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <SendHorizontal aria-hidden className="size-4" />}
         </button>
       </div>
+      {aiError && (
+        <div role="alert" className="flex items-center justify-between rounded-lg bg-danger-soft px-3 py-1.5 text-xs text-danger">
+          <span>{t(aiError)}</span>
+          <button type="button" onClick={() => setAiError(null)} className="ml-2 font-bold hover:underline">
+            ✕
+          </button>
+        </div>
+      )}
       {state.error && (
         <p role="alert" className="text-sm text-danger">
           {t(state.error)}

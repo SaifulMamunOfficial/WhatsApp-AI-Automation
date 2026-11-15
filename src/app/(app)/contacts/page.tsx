@@ -5,10 +5,13 @@ import { z } from "zod";
 import { requireUser } from "@/core/auth/dal";
 import { createTagAction, deleteTagAction } from "@/core/contacts/actions";
 import { CONTACTS_PAGE_SIZE, listContacts, listTagsWithCounts } from "@/core/contacts/queries";
+import { listLifecycleStages } from "@/core/contacts/stages";
 import { db } from "@/db";
 import { formatListTime } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
 import { Avatar, Card, EmptyState, PageHeader, TagChip, buttonClass, cn, fieldClass } from "@/components/ui";
+import { StagePill } from "@/components/stage-pill";
+import { ExportContactsButton } from "./export-contacts-button";
 
 export const metadata = { title: "Contacts — Saimum CRM" };
 
@@ -17,6 +20,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const params = z.object({
   q: z.string().max(100).optional().catch(undefined),
   tag: z.uuid().optional().catch(undefined),
+  stage: z.uuid().optional().catch(undefined),
   channel: z.enum(["whatsapp", "messenger"]).optional().catch(undefined),
   page: z.coerce.number().int().min(1).catch(1),
 });
@@ -38,20 +42,21 @@ async function Content({ searchParams }: { searchParams: SearchParams }) {
   const { t: tr, num, intl } = await getT();
   const raw = await searchParams;
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-  const p = params.parse({ q: first(raw.q), tag: first(raw.tag), channel: first(raw.channel), page: first(raw.page) });
+  const p = params.parse({ q: first(raw.q), tag: first(raw.tag), stage: first(raw.stage), channel: first(raw.channel), page: first(raw.page) });
 
-  const [{ items, total, page }, tags] = await Promise.all([
-    listContacts(db, { q: p.q, tagId: p.tag, channelType: p.channel, page: p.page }),
+  const [{ items, total, page }, tags, stages] = await Promise.all([
+    listContacts(db, { q: p.q, tagId: p.tag, stageId: p.stage, channelType: p.channel, page: p.page }),
     listTagsWithCounts(db),
+    listLifecycleStages(db),
   ]);
   const pages = Math.max(1, Math.ceil(total / CONTACTS_PAGE_SIZE));
   const href = (over: Record<string, string | null>) => {
     const sp = new URLSearchParams();
-    for (const [k, v] of Object.entries({ q: p.q, tag: p.tag, channel: p.channel, ...over })) if (v) sp.set(k, v);
+    for (const [k, v] of Object.entries({ q: p.q, tag: p.tag, stage: p.stage, channel: p.channel, ...over })) if (v) sp.set(k, v);
     const qs = sp.toString();
     return qs ? `/contacts?${qs}` : "/contacts";
   };
-  const filtered = !!(p.q || p.tag || p.channel);
+  const filtered = !!(p.q || p.tag || p.stage || p.channel);
   const now = new Date();
   const channelTabs: { value: string | null; label: string }[] = [
     { value: null, label: tr("সব") },
@@ -66,10 +71,13 @@ async function Content({ searchParams }: { searchParams: SearchParams }) {
         description={tr("{n}টি কন্টাক্ট", { n: num(total) })}
         actions={
           user.role === "admin" && (
-            <Link href="/contacts/import" className={buttonClass("secondary", "md")}>
-              <Upload aria-hidden className="size-4" />
-              {tr("CSV আমদানি")}
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <ExportContactsButton stages={stages} currentFilters={{ q: p.q, stageId: p.stage }} />
+              <Link href="/contacts/import" className={buttonClass("secondary", "md")}>
+                <Upload aria-hidden className="size-4" />
+                {tr("CSV আমদানি")}
+              </Link>
+            </div>
           )
         }
       />
@@ -83,6 +91,14 @@ async function Content({ searchParams }: { searchParams: SearchParams }) {
                 <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-muted" />
                 <input name="q" defaultValue={p.q ?? ""} maxLength={100} aria-label={tr("নাম বা নম্বর খুঁজুন")} placeholder={tr("নাম বা নম্বর খুঁজুন")} className={cn(fieldClass, "pl-10")} />
               </div>
+              <select name="stage" defaultValue={p.stage ?? ""} aria-label={tr("স্টেজ")} className={cn(fieldClass, "!w-auto")}>
+                <option value="">{tr("সব স্টেজ")}</option>
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} {s.isDefault ? " (" + tr("ডিফল্ট") + ")" : ""}
+                  </option>
+                ))}
+              </select>
               <select name="tag" defaultValue={p.tag ?? ""} aria-label={tr("ট্যাগ")} className={cn(fieldClass, "!w-auto")}>
                 <option value="">{tr("সব ট্যাগ")}</option>
                 {tags.map((t) => (
@@ -129,7 +145,12 @@ async function Content({ searchParams }: { searchParams: SearchParams }) {
                       <Link href={`/contacts/${c.id}`} className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2">
                         <Avatar name={name} channel={c.identities[0]?.channelType} />
                         <div className="min-w-0 flex-1 space-y-1">
-                          <p className="truncate font-semibold">{name}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate font-semibold">{name}</p>
+                            {c.stageName && (
+                              <StagePill name={c.stageName} colorKey={c.stageColorKey ?? "slate"} />
+                            )}
+                          </div>
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                             {c.identities.map((i) => (
                               <span key={i.id}>{i.channelType === "whatsapp" ? "WhatsApp" : "Messenger"} · {i.externalId}</span>

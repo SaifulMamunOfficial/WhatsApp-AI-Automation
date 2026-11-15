@@ -9,6 +9,8 @@ import { addNote, assignConversation, markRead, resumeBot, setConversationStatus
 import { sendReply } from "./send";
 import { sendImageReply } from "./send-image";
 import { sendTemplateToConversation } from "./send-template";
+import { transferConversation } from "./transfer";
+import { generateAiDraft, type DraftResult } from "@/core/ai/draft";
 
 // Server Actions are public HTTP endpoints: every one re-checks the session and
 // validates its input, regardless of what the UI shows.
@@ -116,4 +118,38 @@ export async function markReadAction(conversationId: string): Promise<void> {
   const id = idSchema.safeParse(conversationId);
   if (!id.success) return;
   await markRead(db, id.data);
+}
+
+export async function transferAction(_prev: FormState | undefined, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const id = idSchema.safeParse(formData.get("conversationId"));
+  if (!id.success) return { error: "ভুল অনুরোধ।" };
+
+  const rawTarget = String(formData.get("toUserId") ?? "");
+  const target = rawTarget === "" ? null : idSchema.safeParse(rawTarget);
+  if (target !== null && !target.success) return { error: "ভুল মেম্বার আইডি।" };
+
+  const note = String(formData.get("note") ?? "").trim() || undefined;
+
+  const result = await transferConversation(
+    db,
+    {
+      conversationId: id.data,
+      toUserId: target ? target.data : null,
+      note,
+    },
+    { id: user.id, name: user.name, role: user.role },
+  );
+
+  if (!result.ok) return { error: result.error };
+  revalidatePath("/inbox");
+  return done();
+}
+
+export async function aiDraftAction(conversationId: string): Promise<DraftResult> {
+  const user = await requireUser();
+  const id = idSchema.safeParse(conversationId);
+  if (!id.success) return { ok: false, code: "error", error: "ভুল অনুরোধ।" };
+
+  return generateAiDraft(db, { conversationId: id.data, userId: user.id });
 }

@@ -129,6 +129,22 @@ export function calculateBusinessWaitMinutes(
   return totalMinutes;
 }
 
+export function formatSlaBadgeLabel(waitMinutes: number, locale: Locale = "bn"): string {
+  const nf = numberFormat(locale);
+  const num = (n: number) => nf.format(n);
+  if (waitMinutes < 1) {
+    return locale === "bn" ? "এইমাত্র" : "just now";
+  }
+  if (waitMinutes < 60) {
+    return locale === "bn" ? `${num(waitMinutes)}মি অপেক্ষা` : `${num(waitMinutes)}m wait`;
+  }
+  const hours = Math.floor(waitMinutes / 60);
+  const mins = waitMinutes % 60;
+  return locale === "bn"
+    ? (mins > 0 ? `${num(hours)}ঘ ${num(mins)}মি অপেক্ষা` : `${num(hours)}ঘ অপেক্ষা`)
+    : (mins > 0 ? `${num(hours)}h ${num(mins)}m wait` : `${num(hours)}h wait`);
+}
+
 /**
  * Returns a human-friendly SLA badge with appropriate color and localized numerals.
  * < 5 min: Green
@@ -136,21 +152,7 @@ export function calculateBusinessWaitMinutes(
  * > 15 min: Red
  */
 export function getSlaBadge(waitMinutes: number, locale: Locale = "bn"): SlaBadge {
-  const nf = numberFormat(locale);
-  const num = (n: number) => nf.format(n);
-  let label = "";
-
-  if (waitMinutes < 1) {
-    label = locale === "bn" ? "এইমাত্র" : "just now";
-  } else if (waitMinutes < 60) {
-    label = locale === "bn" ? `${num(waitMinutes)}মি অপেক্ষা` : `${num(waitMinutes)}m wait`;
-  } else {
-    const hours = Math.floor(waitMinutes / 60);
-    const mins = waitMinutes % 60;
-    label = locale === "bn"
-      ? (mins > 0 ? `${num(hours)}ঘ ${num(mins)}মি অপেক্ষা` : `${num(hours)}ঘ অপেক্ষা`)
-      : (mins > 0 ? `${num(hours)}h ${num(mins)}m wait` : `${num(hours)}h wait`);
-  }
+  const label = formatSlaBadgeLabel(waitMinutes, locale);
 
   let color: "green" | "yellow" | "red" = "green";
   if (waitMinutes > 15) {

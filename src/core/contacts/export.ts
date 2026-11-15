@@ -18,7 +18,7 @@ export interface ContactExportFilter {
 
 export type ExportResult =
   | { ok: true; csvContent: string; count: number }
-  | { ok: false; code: "forbidden" | "limit_exceeded"; error: string };
+  | { ok: false; code: "forbidden" | "limit_exceeded" | "invalid_filter"; error: string };
 
 export const MAX_EXPORT_LIMIT = 5000;
 

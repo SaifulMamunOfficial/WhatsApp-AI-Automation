@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, CalendarOff, KeyRound, LayoutDashboard, Megaphone, MessageSquare, MessageSquareText, Plug, UserCog, Users, Zap, type LucideIcon } from "lucide-react";
+import { BarChart3, BookOpen, CalendarOff, KeyRound, Layers, LayoutDashboard, Megaphone, MessageSquare, MessageSquareText, Plug, UserCog, Users, Zap, type LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "./ui";
 
@@ -28,6 +28,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "সেটিংস",
     items: [
       { href: "/settings/automations", label: "অটোমেশন", icon: Zap, adminOnly: true },
+      { href: "/settings/stages", label: "লাইফসাইকেল স্টেজ", icon: Layers, adminOnly: true },
       { href: "/settings/holidays", label: "ছুটির দিন", icon: CalendarOff, adminOnly: true },
       { href: "/settings/quick-replies", label: "দ্রুত উত্তর", icon: MessageSquareText, adminOnly: true },
       { href: "/settings/knowledge", label: "জ্ঞানভান্ডার ও AI", icon: BookOpen, adminOnly: true },

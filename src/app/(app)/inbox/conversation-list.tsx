@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { Bot, MessageSquare, Search, UserRound } from "lucide-react";
+import { Bot, Clock, MessageSquare, Search, UserRound } from "lucide-react";
 import { Avatar, Badge, ChannelBadge, EmptyState, cn } from "@/components/ui";
+import { StagePill } from "@/components/stage-pill";
+import { formatSlaBadgeLabel } from "@/core/inbox/sla";
 import type { ConversationRow } from "@/core/inbox/queries";
+import type { LifecycleStage } from "@/core/contacts/stages";
 import { formatListTime } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
 import { InboxFilters } from "./inbox-filters";
@@ -16,12 +19,16 @@ export async function ConversationList({
   conversations,
   params,
   selectedId,
+  stages = [],
+  unrepliedCount = 0,
 }: {
   conversations: ConversationRow[];
   params: InboxParams;
   selectedId?: string;
+  stages?: LifecycleStage[];
+  unrepliedCount?: number;
 }) {
-  const { t, num, intl } = await getT();
+  const { t, num, intl, locale } = await getT();
 
   return (
     <>
@@ -36,6 +43,8 @@ export async function ConversationList({
           {params.assigned !== "all" && <input type="hidden" name="assigned" value={params.assigned} />}
           {params.status !== "open" && <input type="hidden" name="status" value={params.status} />}
           {params.needs && <input type="hidden" name="needs" value={params.needs} />}
+          {params.unreplied && <input type="hidden" name="unreplied" value={params.unreplied} />}
+          {params.stage && <input type="hidden" name="stage" value={params.stage} />}
           <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-muted" />
           <input
             type="search"
@@ -48,7 +57,7 @@ export async function ConversationList({
           />
         </form>
 
-        <InboxFilters params={params} />
+        <InboxFilters params={params} stages={stages} unrepliedCount={unrepliedCount} />
       </div>
 
       <ul className="scroll-thin min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
@@ -85,23 +94,38 @@ export async function ConversationList({
                       </span>
                     )}
                   </div>
-                  {(c.needsHuman || c.assigneeName || c.botPaused) && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {c.needsHuman && (
-                        <Badge tone="danger">
-                          <UserRound aria-hidden className="size-3" />
-                          {t("মানুষ দরকার")}
-                        </Badge>
-                      )}
-                      {c.assigneeName && <Badge>→ {c.assigneeName}</Badge>}
-                      {c.botPaused && !c.needsHuman && (
-                        <Badge tone="warning">
-                          <Bot aria-hidden className="size-3" />
-                          {t("bot বন্ধ")}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {c.sla && (
+                      <Badge
+                        tone={
+                          c.sla.color === "red"
+                            ? "danger"
+                            : c.sla.color === "yellow"
+                            ? "warning"
+                            : "success"
+                        }
+                      >
+                        <Clock aria-hidden className="size-3" />
+                        {formatSlaBadgeLabel(c.sla.waitMinutes, locale)}
+                      </Badge>
+                    )}
+                    {c.stageName && (
+                      <StagePill name={c.stageName} colorKey={c.stageColorKey ?? "slate"} />
+                    )}
+                    {c.needsHuman && (
+                      <Badge tone="danger">
+                        <UserRound aria-hidden className="size-3" />
+                        {t("মানুষ দরকার")}
+                      </Badge>
+                    )}
+                    {c.assigneeName && <Badge>→ {c.assigneeName}</Badge>}
+                    {c.botPaused && !c.needsHuman && (
+                      <Badge tone="warning">
+                        <Bot aria-hidden className="size-3" />
+                        {t("bot বন্ধ")}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </Link>
             </li>

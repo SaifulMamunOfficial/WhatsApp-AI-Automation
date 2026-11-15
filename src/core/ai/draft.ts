@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { Db } from "@/core/inbox/ingest";
 import { getActiveProvider } from "./config";
@@ -140,4 +140,26 @@ export async function generateAiDraft(db: Db, input: DraftInput): Promise<DraftR
     const message = err instanceof Error ? err.message : "এআই কল ব্যর্থ হয়েছে।";
     return fail("error", message);
   }
+}
+
+/**
+ * Checks if the AI draft button should be active.
+ * Returns false if no AI provider is configured or no knowledge base article is enabled.
+ */
+export async function isAiDraftAvailable(
+  db: Db,
+): Promise<{ available: boolean; reason?: "no_provider" | "no_knowledge" }> {
+  const provider = await getActiveProvider(db);
+  if (!provider) return { available: false, reason: "no_provider" };
+
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.knowledgeBase)
+    .where(eq(schema.knowledgeBase.enabled, true));
+
+  if (!row || Number(row.count) === 0) {
+    return { available: false, reason: "no_knowledge" };
+  }
+
+  return { available: true };
 }

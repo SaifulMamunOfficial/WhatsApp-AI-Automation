@@ -12,6 +12,9 @@ import { getT } from "@/lib/i18n/server";
 import { Chip } from "../page";
 import { setOptInAction } from "@/core/broadcast/actions";
 import { Alert, Avatar, Badge, Card, ChannelBadge, buttonClass, cn, fieldClass } from "@/components/ui";
+import { StagePill } from "@/components/stage-pill";
+import { StageSelector } from "../../inbox/stage-selector";
+import { listLifecycleStages } from "@/core/contacts/stages";
 
 export const metadata = { title: "Contact — Saimum CRM" };
 
@@ -48,8 +51,9 @@ async function Content({ params, searchParams }: Props) {
 
   const sp = await searchParams;
   const mq = (Array.isArray(sp.mq) ? sp.mq[0] : sp.mq)?.trim().slice(0, 100);
-  const [allTags, candidates] = await Promise.all([
+  const [allTags, stages, candidates] = await Promise.all([
     listTagsWithCounts(db),
+    listLifecycleStages(db),
     user.role === "admin" && mq ? searchContactsForMerge(db, mq, contact.id) : Promise.resolve([]),
   ]);
   const unused = allTags.filter((t) => !tags.some((x) => x.id === t.id));
@@ -65,7 +69,12 @@ async function Content({ params, searchParams }: Props) {
         <div className="flex flex-wrap items-center gap-4">
           <Avatar name={title} channel={identities[0]?.channelType} size="lg" />
           <div className="min-w-0 flex-1 space-y-1">
-            <h1 className="truncate text-2xl font-bold tracking-tight">{title}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-2xl font-bold tracking-tight">{title}</h1>
+              {contact.stageName && (
+                <StagePill name={contact.stageName} colorKey={contact.stageColorKey ?? "slate"} />
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
               {[...new Set(identities.map((i) => i.channelType))].map((ty) => (
                 <ChannelBadge key={ty} type={ty} />
@@ -80,6 +89,10 @@ async function Content({ params, searchParams }: Props) {
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_26rem]">
         <div className="min-w-0 space-y-6">
           <Section title={tr("তথ্য")}>
+            <div className="flex items-center gap-2 pb-2">
+              <span className="text-sm font-semibold text-muted">{tr("লাইফসাইকেল স্টেজ:")}</span>
+              <StageSelector contactId={contact.id} currentStageId={contact.stageId} stages={stages} />
+            </div>
             <form action={saveContactAction} className="space-y-3">
               <input type="hidden" name="id" value={contact.id} />
               <input name="name" defaultValue={contact.name ?? ""} maxLength={200} aria-label={tr("নাম")} placeholder={tr("নাম")} className={field} />

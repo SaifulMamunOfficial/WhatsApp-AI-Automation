@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { AlertCircle, ArrowLeft, Bot, Check, CheckCheck, CircleCheck, Clock, FileText, Loader2, RotateCcw, StickyNote, UserRound } from "lucide-react";
 import { Alert, Avatar, Badge, buttonClass, ChannelBadge, cn, fieldClass } from "@/components/ui";
+import { StagePill } from "@/components/stage-pill";
+import { StageSelector } from "./stage-selector";
+import { TransferDialog } from "./transfer-dialog";
+import type { LifecycleStage } from "@/core/contacts/stages";
 import { assignAction, resumeBotAction, statusAction } from "@/core/inbox/actions";
 import type { ConversationDetail } from "@/core/inbox/queries";
 import { replyWindow } from "@/core/inbox/window";
@@ -140,6 +144,9 @@ export async function ConversationView({
   quickReplies,
   allTags,
   templatePanel,
+  stages = [],
+  aiAvailable = true,
+  aiDisabledReason,
 }: {
   templatePanel?: { templates: TemplateOption[]; optedIn: boolean };
   quickReplies: QuickReply[];
@@ -148,6 +155,9 @@ export async function ConversationView({
   users: { id: string; name: string; role: "admin" | "agent" }[];
   viewer: { id: string; role: "admin" | "agent" };
   params: InboxParams;
+  stages?: LifecycleStage[];
+  aiAvailable?: boolean;
+  aiDisabledReason?: "no_provider" | "no_knowledge";
 }) {
   const { t, num, intl } = await getT();
   const { conversation: c, messages, notes, contactTags } = detail;
@@ -170,6 +180,9 @@ export async function ConversationView({
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-lg font-bold tracking-tight">{name}</h2>
               <ChannelBadge type={c.channelType} />
+              {c.stageName && (
+                <StagePill name={c.stageName} colorKey={c.stageColorKey ?? "slate"} />
+              )}
               {closed && <Badge>{t("বন্ধ")}</Badge>}
             </div>
             <p className="truncate text-sm text-muted">
@@ -182,6 +195,23 @@ export async function ConversationView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {stages.length > 0 && (
+            <StageSelector
+              contactId={c.contactId}
+              currentStageId={c.stageId}
+              stages={stages}
+            />
+          )}
+
+          <TransferDialog
+            conversationId={c.id}
+            currentAssigneeId={c.assignedUserId}
+            currentAssigneeName={c.assigneeName}
+            users={users}
+            viewerId={viewer.id}
+            viewerRole={viewer.role}
+          />
+
           <form action={assignAction} className="flex items-center gap-2">
             <input type="hidden" name="conversationId" value={c.id} />
             <label htmlFor="assign" className="sr-only">{t("দায়িত্বে কে")}</label>
@@ -253,7 +283,13 @@ export async function ConversationView({
           <Alert tone="info">{t("২৪ ঘণ্টা পার হয়েছে। আপনি এখনো উত্তর দিতে পারবেন (Human Agent), শেষ সময় {time}।", { time: formatFull(win.closesAt, intl) })}</Alert>
         )}
 
-        <ReplyForm conversationId={c.id} disabled={win.mode === "closed"} quickReplies={quickReplies} />
+        <ReplyForm
+          conversationId={c.id}
+          disabled={win.mode === "closed"}
+          quickReplies={quickReplies}
+          aiAvailable={aiAvailable}
+          aiDisabledReason={aiDisabledReason}
+        />
 
         <details open={notes.length > 0} className="group rounded-lg border border-border">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-sm font-medium text-muted hover:text-fg">

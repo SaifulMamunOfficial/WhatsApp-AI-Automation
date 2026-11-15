@@ -24,6 +24,8 @@ export interface LifecycleStageRow {
   createdAt: Date;
 }
 
+export type LifecycleStage = LifecycleStageRow;
+
 export type StageErrorCode = "forbidden" | "invalid_input" | "not_found" | "conflict";
 
 export type StageResult<T = void> =
