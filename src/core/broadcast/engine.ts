@@ -321,7 +321,18 @@ async function recordInInbox(db: Db, a: { channelId: string; contactId: string; 
   if (!identity) return;
   const c = schema.conversations;
   // New conversations start closed: a broadcast must not fill the open inbox.
-  await db.insert(c).values({ channelId: a.channelId, contactId: a.contactId, identityId: identity.id, status: "closed", lastMessageAt: a.at, lastMessagePreview: a.text.slice(0, 200) }).onConflictDoNothing({ target: [c.channelId, c.identityId] });
+  await db
+    .insert(c)
+    .values({
+      channelId: a.channelId,
+      contactId: a.contactId,
+      identityId: identity.id,
+      status: "closed",
+      lastMessageAt: a.at,
+      lastOutboundMessageAt: a.at,
+      lastMessagePreview: a.text.slice(0, 200),
+    })
+    .onConflictDoNothing({ target: [c.channelId, c.identityId] });
   const [conv] = await db.select({ id: c.id }).from(c).where(and(eq(c.channelId, a.channelId), eq(c.identityId, identity.id))).limit(1);
   if (!conv) return;
   const inserted = await db
@@ -330,7 +341,14 @@ async function recordInInbox(db: Db, a: { channelId: string; contactId: string; 
     .onConflictDoNothing({ target: schema.messages.externalId })
     .returning({ id: schema.messages.id });
   if (inserted.length) {
-    await db.update(c).set({ lastMessageAt: sql`greatest(${c.lastMessageAt}, ${a.at.toISOString()}::timestamptz)`, lastMessagePreview: a.text.slice(0, 200) }).where(eq(c.id, conv.id));
+    await db
+      .update(c)
+      .set({
+        lastMessageAt: sql`greatest(${c.lastMessageAt}, ${a.at.toISOString()}::timestamptz)`,
+        lastOutboundMessageAt: sql`greatest(coalesce(${c.lastOutboundMessageAt}, ${a.at.toISOString()}::timestamptz), ${a.at.toISOString()}::timestamptz)`,
+        lastMessagePreview: a.text.slice(0, 200),
+      })
+      .where(eq(c.id, conv.id));
     publishInboxEvent({ type: "conversation", conversationId: conv.id });
   }
 }

@@ -211,9 +211,15 @@ export async function ensureIdentityByKey(
   let [identity] = await find();
 
   if (!identity) {
+    const [defStage] = await tx
+      .select({ id: schema.lifecycleStages.id })
+      .from(schema.lifecycleStages)
+      .where(eq(schema.lifecycleStages.isDefault, true))
+      .limit(1);
+
     const [contact] = await tx
       .insert(schema.contacts)
-      .values({ name: contactName ?? null })
+      .values({ name: contactName ?? null, stageId: defStage?.id ?? null })
       .returning({ id: schema.contacts.id });
     const created = await tx
       .insert(schema.contactIdentities)
@@ -298,7 +304,11 @@ async function touchConversation(tx: Tx, conversationId: string, m: NormalizedMe
     const humanReply = m.source === "phone_app" || m.source === "page_inbox";
     await tx
       .update(c)
-      .set(humanReply ? { ...base, botPaused: true, needsHuman: false } : base)
+      .set({
+        ...base,
+        lastOutboundMessageAt: sql`greatest(coalesce(${c.lastOutboundMessageAt}, ${iso}::timestamptz), ${iso}::timestamptz)`,
+        ...(humanReply ? { botPaused: true, needsHuman: false } : {}),
+      })
       .where(eq(c.id, conversationId));
   }
 }

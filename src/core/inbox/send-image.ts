@@ -141,7 +141,13 @@ export async function sendImageReply(
 
   await db
     .update(schema.conversations)
-    .set({ lastMessageAt: now, lastMessagePreview: (shownCaption || "[image]").slice(0, 200), botPaused: true, needsHuman: false })
+    .set({
+      lastMessageAt: now,
+      lastOutboundMessageAt: now,
+      lastMessagePreview: (shownCaption || "[image]").slice(0, 200),
+      botPaused: true,
+      needsHuman: false,
+    })
     .where(eq(schema.conversations.id, conversation.id));
 
   publishInboxEvent({ type: "conversation", conversationId: conversation.id });

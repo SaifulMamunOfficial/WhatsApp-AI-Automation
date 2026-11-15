@@ -104,6 +104,7 @@ export async function sendTemplateToConversation(
     .update(schema.conversations)
     .set({
       lastMessageAt: now,
+      lastOutboundMessageAt: now,
       lastMessagePreview: text.slice(0, 200),
       // A person stepping in silences the bot for this conversation. The 24h window is NOT reopened:
       // only the customer writing back does that.

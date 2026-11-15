@@ -42,6 +42,7 @@ export const conversations = pgTable(
     needsHuman: boolean("needs_human").notNull().default(false),
     // Start of the 24h reply window (bot may answer; templates/human tag needed after).
     lastCustomerMessageAt: timestamp("last_customer_message_at", { withTimezone: true }),
+    lastOutboundMessageAt: timestamp("last_outbound_message_at", { withTimezone: true }),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
     lastMessagePreview: text("last_message_preview"),
     unreadCount: integer("unread_count").notNull().default(0),

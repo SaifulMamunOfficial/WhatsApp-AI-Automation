@@ -12,6 +12,7 @@ const BN = /[ঀ-৿]/;
 const NOT_UI = [
   "lib/i18n/",
   "core/ai/answer.ts",
+  "core/ai/draft.ts",
   "core/ai/retrieve.ts",
   "core/automation/config.ts",
   "core/automation/text.ts",

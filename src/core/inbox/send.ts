@@ -120,6 +120,7 @@ export async function sendReply(db: Db, deps: SendDeps, input: SendReplyInput): 
     .update(schema.conversations)
     .set({
       lastMessageAt: now,
+      lastOutboundMessageAt: now,
       lastMessagePreview: text.slice(0, 200),
       // A person stepping in silences the bot for this conversation.
       ...(input.sender === "human" ? { botPaused: true, needsHuman: false } : {}),

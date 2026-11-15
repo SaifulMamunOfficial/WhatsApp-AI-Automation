@@ -1,19 +1,42 @@
-import { boolean, index, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, index, integer, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { channels } from "./channels";
 
+// Customizable stages for the customer pipeline (e.g. New Lead, Interested, Customer)
+export const lifecycleStages = pgTable(
+  "lifecycle_stages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    colorKey: text("color_key").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("lifecycle_stages_default_idx").on(t.isDefault).where(sql`is_default = true`),
+    index("lifecycle_stages_sort_order_idx").on(t.sortOrder),
+  ],
+);
+
 // One real person. May have several identities (WhatsApp number, Facebook PSID).
-export const contacts = pgTable("contacts", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name"),
-  notes: text("notes"),
-  // Explicit consent to receive marketing/broadcast messages. Broadcasts go ONLY to opted-in contacts.
-  optedIn: boolean("opted_in").notNull().default(false),
-  optedInAt: timestamp("opted_in_at", { withTimezone: true }),
-  // How consent was obtained/changed: "manual", "csv_import", "customer_stop", ...
-  optInSource: text("opt_in_source"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const contacts = pgTable(
+  "contacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name"),
+    stageId: uuid("stage_id").references(() => lifecycleStages.id, { onDelete: "set null" }),
+    notes: text("notes"),
+    // Explicit consent to receive marketing/broadcast messages. Broadcasts go ONLY to opted-in contacts.
+    optedIn: boolean("opted_in").notNull().default(false),
+    optedInAt: timestamp("opted_in_at", { withTimezone: true }),
+    // How consent was obtained/changed: "manual", "csv_import", "customer_stop", ...
+    optInSource: text("opt_in_source"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("contacts_stage_idx").on(t.stageId)],
+);
 
 // How a contact is known on one channel. A Facebook PSID is page-scoped, so
 // identities are unique per (channel, external id).
