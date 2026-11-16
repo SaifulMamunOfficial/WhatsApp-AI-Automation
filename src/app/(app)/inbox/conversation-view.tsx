@@ -15,6 +15,9 @@ import { getT } from "@/lib/i18n/server";
 import type { TFn } from "@/lib/i18n";
 import type { QuickReply } from "@/core/inbox/quick-reply-match";
 import { NoteForm, ReplyForm, ScrollToBottom } from "./client-bits";
+import { NewOrderButton } from "./new-order-button";
+import { STATUS_LABEL, STATUS_TONE } from "../orders/labels";
+import type { OrderStatus } from "@/core/orders/rules";
 import { TagBar, type TagView } from "./tag-bar";
 import { TemplatePanel, type TemplateOption } from "./template-panel";
 import { inboxHref } from "./conversation-list";
@@ -147,6 +150,7 @@ export async function ConversationView({
   stages = [],
   aiAvailable = true,
   aiDisabledReason,
+  orders = [],
 }: {
   templatePanel?: { templates: TemplateOption[]; optedIn: boolean };
   quickReplies: QuickReply[];
@@ -158,6 +162,7 @@ export async function ConversationView({
   stages?: LifecycleStage[];
   aiAvailable?: boolean;
   aiDisabledReason?: "no_provider" | "no_knowledge";
+  orders?: { id: string; label: string; status: OrderStatus; title: string }[];
 }) {
   const { t, num, intl } = await getT();
   const { conversation: c, messages, notes, contactTags } = detail;
@@ -202,6 +207,8 @@ export async function ConversationView({
               stages={stages}
             />
           )}
+
+          <NewOrderButton contactId={c.contactId} contactLabel={name} conversationId={c.id} />
 
           <TransferDialog
             conversationId={c.id}
@@ -248,6 +255,20 @@ export async function ConversationView({
         </div>
 
         <TagBar contactId={c.contactId} tags={contactTags} allTags={allTags} />
+
+        {orders.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-semibold text-muted">{t("এই গ্রাহকের অর্ডার")}:</span>
+            {orders.slice(0, 6).map((o) => (
+              <Link key={o.id} href={`/orders?status=all&o=${o.id}`} title={o.title} className="inline-flex items-center gap-1">
+                <Badge tone={STATUS_TONE[o.status]}>{o.label} · {t(STATUS_LABEL[o.status])}</Badge>
+              </Link>
+            ))}
+            {orders.length > 6 && (
+              <Link href={`/orders?status=all&q=${encodeURIComponent(name)}`} className="text-brand hover:underline">{t("সব দেখুন")}</Link>
+            )}
+          </div>
+        )}
 
         {c.needsHuman && (
           <Alert tone="danger">

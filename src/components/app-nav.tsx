@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, CalendarOff, KeyRound, Layers, LayoutDashboard, Megaphone, MessageSquare, MessageSquareText, Plug, UserCog, Users, Zap, type LucideIcon } from "lucide-react";
+import { BarChart3, BookOpen, CalendarOff, ClipboardList, KeyRound, Layers, LayoutDashboard, Megaphone, MessageSquare, MessageSquareText, Plug, UserCog, Users, Zap, type LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "./ui";
 
@@ -21,6 +21,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/inbox", label: "ইনবক্স", icon: MessageSquare },
       { href: "/analytics", label: "বিশ্লেষণ", icon: BarChart3, adminOnly: true },
       { href: "/contacts", label: "কন্টাক্ট", icon: Users },
+      { href: "/orders", label: "অর্ডারসমূহ", icon: ClipboardList },
     ],
   },
   { title: "প্রচার", items: [{ href: "/broadcasts", label: "Broadcast", icon: Megaphone, adminOnly: true }] },
@@ -39,7 +40,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
-export function AppNav({ role, inboxUnread = 0 }: { role: "admin" | "agent"; inboxUnread?: number }) {
+export function AppNav({ role, inboxUnread = 0, ordersOpen = 0 }: { role: "admin" | "agent"; inboxUnread?: number; ordersOpen?: number }) {
   const pathname = usePathname();
   const { t, num } = useI18n();
 
@@ -68,6 +69,11 @@ export function AppNav({ role, inboxUnread = 0 }: { role: "admin" | "agent"; inb
                   {href === "/inbox" && inboxUnread > 0 && (
                     <span className="rounded-full px-2 py-0.5 text-xs font-bold text-brand-fg [background-image:var(--brand-grad)]" aria-label={t("{n}টি অপঠিত কথোপকথন", { n: num(inboxUnread) })}>
                       {inboxUnread > 99 ? "99+" : inboxUnread}
+                    </span>
+                  )}
+                  {href === "/orders" && ordersOpen > 0 && (
+                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-bold text-muted" aria-label={t("{n}টি চলমান অর্ডার", { n: num(ordersOpen) })}>
+                      {ordersOpen > 99 ? "99+" : ordersOpen}
                     </span>
                   )}
                 </Link>

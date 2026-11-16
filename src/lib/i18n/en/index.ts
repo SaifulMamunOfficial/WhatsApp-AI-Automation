@@ -5,6 +5,7 @@ import { adminPages } from "./admin-pages";
 import { analytics } from "./analytics";
 import { inbox } from "./inbox";
 import { media } from "./media";
+import { orders } from "./orders";
 import { quickReplies } from "./quick-replies";
 import { legal } from "./legal";
 import { settings } from "./settings";
@@ -20,6 +21,7 @@ export const EN: Record<string, string> = {
   ...adminPages,
   ...holidays,
   ...media,
+  ...orders,
   ...quickReplies,
   ...legal,
   ...contacts,

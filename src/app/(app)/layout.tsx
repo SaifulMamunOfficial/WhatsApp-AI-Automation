@@ -13,6 +13,7 @@ import { db } from "@/db";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getT } from "@/lib/i18n/server";
 import { conversations } from "@/db/schema";
+import { openOrderCount } from "@/core/orders/queries";
 
 // Every page in this group requires a valid session. With Cache Components the session read
 // must sit behind <Suspense>, so the guard wraps the whole shell.
@@ -43,6 +44,9 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
     .from(conversations)
     .where(and(eq(conversations.status, "open"), gt(conversations.unreadCount, 0)));
 
+  // Unfinished orders (pending + in progress): a badge on the orders link.
+  const ordersOpen = await openOrderCount(db);
+
   const userCard = (
     <div className="space-y-2 border-t border-border pt-3">
       <Link href="/settings/profile" title={t("আমার প্রোফাইল")} className="flex items-center gap-2.5 rounded-xl px-1 py-1 transition-colors hover:bg-surface-2">
@@ -69,7 +73,7 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden w-64 shrink-0 flex-col gap-6 border-r border-border bg-surface p-4 lg:flex">
         <Brand />
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <AppNav role={user.role} inboxUnread={n} />
+          <AppNav role={user.role} inboxUnread={n} ordersOpen={ordersOpen} />
         </div>
       </aside>
 
@@ -108,7 +112,7 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
             </form>
           </div>
         </header>
-        <MobileBar brand={<Brand />} nav={<AppNav role={user.role} inboxUnread={n} />} footer={userCard} />
+        <MobileBar brand={<Brand />} nav={<AppNav role={user.role} inboxUnread={n} ordersOpen={ordersOpen} />} footer={userCard} />
         <div className="scroll-thin page-glow min-h-0 flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>

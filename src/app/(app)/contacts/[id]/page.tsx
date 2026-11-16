@@ -15,6 +15,11 @@ import { Alert, Avatar, Badge, Card, ChannelBadge, buttonClass, cn, fieldClass }
 import { StagePill } from "@/components/stage-pill";
 import { StageSelector } from "../../inbox/stage-selector";
 import { listLifecycleStages } from "@/core/contacts/stages";
+import { listOrders } from "@/core/orders/queries";
+import { formatOrderNumber } from "@/core/orders/rules";
+import { NewOrderButton } from "../../inbox/new-order-button";
+import { KIND_LABEL, STATUS_LABEL, STATUS_TONE } from "../../orders/labels";
+import { taka } from "@/lib/money";
 
 export const metadata = { title: "Contact — Saimum CRM" };
 
@@ -42,7 +47,7 @@ function Section({ title, children, className }: { title: string; children: Reac
 
 async function Content({ params, searchParams }: Props) {
   const user = await requireUser();
-  const { t: tr, intl } = await getT();
+  const { t: tr, num, intl } = await getT();
   const id = z.uuid().safeParse((await params).id);
   if (!id.success) notFound();
   const detail = await getContactDetail(db, id.data);
@@ -51,10 +56,11 @@ async function Content({ params, searchParams }: Props) {
 
   const sp = await searchParams;
   const mq = (Array.isArray(sp.mq) ? sp.mq[0] : sp.mq)?.trim().slice(0, 100);
-  const [allTags, stages, candidates] = await Promise.all([
+  const [allTags, stages, candidates, orders] = await Promise.all([
     listTagsWithCounts(db),
     listLifecycleStages(db),
     user.role === "admin" && mq ? searchContactsForMerge(db, mq, contact.id) : Promise.resolve([]),
+    listOrders(db, { contactId: contact.id, status: "all" }, user.id),
   ]);
   const unused = allTags.filter((t) => !tags.some((x) => x.id === t.id));
   const title = contact.name ?? identities[0]?.externalId ?? tr("নামহীন");
@@ -99,6 +105,29 @@ async function Content({ params, searchParams }: Props) {
               <textarea name="notes" defaultValue={contact.notes ?? ""} rows={4} maxLength={5000} aria-label={tr("নোট (শুধু কর্মীরা দেখেন)")} placeholder={tr("নোট (শুধু কর্মীরা দেখেন)")} className={field} />
               <button type="submit" className={buttonClass("primary", "md")}>{tr("সংরক্ষণ")}</button>
             </form>
+          </Section>
+
+          <Section title={tr("অর্ডারসমূহ")}>
+            <div>
+              <NewOrderButton contactId={contact.id} contactLabel={contact.name ?? identities[0]?.externalId ?? tr("নামহীন")} conversationId={conversations[0]?.id ?? null} />
+            </div>
+            {orders.length === 0 ? (
+              <p className="text-sm text-muted">{tr("এই গ্রাহকের কোনো অর্ডার নেই।")}</p>
+            ) : (
+              <ul className="-mx-2 divide-y divide-border">
+                {orders.map((o) => (
+                  <li key={o.id}>
+                    <Link href={`/orders?status=all&o=${o.id}`} className="group flex flex-wrap items-center gap-2 rounded-xl px-2 py-3 transition-colors hover:bg-surface-2">
+                      <span className="font-semibold text-brand">{formatOrderNumber(o.number)}</span>
+                      <Badge>{tr(KIND_LABEL[o.kind])}</Badge>
+                      <span className="min-w-0 flex-1 truncate text-sm">{o.title}</span>
+                      {o.itemCount > 0 && <span className="text-sm font-semibold">{taka(num(o.totalAmount))}</span>}
+                      <Badge tone={STATUS_TONE[o.status]}>{tr(STATUS_LABEL[o.status])}</Badge>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Section>
 
           <Section title={tr("কথোপকথন")}>

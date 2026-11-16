@@ -109,6 +109,9 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
       .where(eq(schema.conversations.contactId, mergeId))
       .returning({ id: schema.conversations.id });
 
+    // Orders follow the person (they are business records and block deleting the contact).
+    await tx.update(schema.orders).set({ contactId: keepId }).where(eq(schema.orders.contactId, mergeId));
+
     // Union of tags (the same tag on both is fine).
     const goneTags = await tx.select({ tagId: schema.contactTags.tagId }).from(schema.contactTags).where(eq(schema.contactTags.contactId, mergeId));
     if (goneTags.length) {

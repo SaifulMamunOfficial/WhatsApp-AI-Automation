@@ -15,6 +15,8 @@ import { getConversation, listAssignableUsers, listConversations, type InboxFilt
 import { db } from "@/db";
 import { ConversationList } from "./conversation-list";
 import { ConversationView } from "./conversation-view";
+import { listOrders } from "@/core/orders/queries";
+import { formatOrderNumber } from "@/core/orders/rules";
 import { MarkRead } from "./client-bits";
 import { Realtime } from "./realtime";
 
@@ -83,11 +85,12 @@ async function InboxContent({ searchParams }: { searchParams: SearchParams }) {
 
   // After 24 hours a WhatsApp customer can only be written to with an approved template.
   const needsTemplate = detail?.conversation.channelType === "whatsapp";
-  const [panel, aiStatus] = await Promise.all([
+  const [panel, aiStatus, contactOrders] = await Promise.all([
     detail && needsTemplate ? getTemplatePanelData(db, detail.conversation.channelId, detail.conversation.contactId) : Promise.resolve(null),
     detail
       ? isAiDraftAvailable(db)
       : Promise.resolve({ available: false, reason: undefined as "no_provider" | "no_knowledge" | undefined }),
+    detail ? listOrders(db, { contactId: detail.conversation.contactId, status: "all" }, user.id) : Promise.resolve([]),
   ]);
   const templatePanel = panel
     ? {
@@ -126,6 +129,7 @@ async function InboxContent({ searchParams }: { searchParams: SearchParams }) {
               stages={stages}
               aiAvailable={aiStatus.available}
               aiDisabledReason={aiStatus.reason}
+              orders={contactOrders.map((o) => ({ id: o.id, label: formatOrderNumber(o.number), status: o.status, title: o.title }))}
             />
           </>
         ) : (
