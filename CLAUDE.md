@@ -193,6 +193,21 @@ src/
 - **দ্বিতীয় উত্তর ঠেকানো**: automation কাজ ক্র্যাশে আবার চললে `botAlreadyReplied` দেখে, গ্রাহকের মেসেজের পরে bot-এর উত্তর থাকলে ছেড়ে দেয়। Handler **throw করলে** retry; Meta উত্তর ফেরত দিলে retry নয় (দুবার পাঠানোর ঝুঁকি), সেটা মেসেজেই "ব্যর্থ" থাকে।
 - পুরনো `done` কাজ ৭ দিন, `failed` ৩০ দিন পরে মোছে। অবস্থা (অপেক্ষায়/চলছে/ব্যর্থ ও শেষ ৫টি কারণ) কনফিগারেশন পেজে।
 
+## ধাপ ১২-র পরের কাজ (২০২৬-১১-১৬ পর্যন্ত)
+
+ধাপ ১৩-র আগে যা যোগ হয়েছে (সবই commit করা, কোড ও টেস্ট সম্পূর্ণ; আসল Meta/AI API-তে যাচাই হয়নি): টিম ম্যানেজমেন্ট ও role (`/settings/team`), দ্রুত উত্তর (`/settings/quick-replies`, `/` দিয়ে), ছুটির বার্তা (`/settings/holidays`), মিডিয়া ডাউনলোড ও ছবি পাঠানো (`/api/media/[id]`), বিশ্লেষণ, bot মোড (বন্ধ / শুধু অফিস-বন্ধে / সবসময়), ইনবক্স থেকে template পাঠানো, Configuration পেজে AI key (Claude/ChatGPT/Gemini), নিজস্ব Postgres job queue, migration `0007`–`0013`। নতুন পরিবেশে (বিশেষ করে live-এ) সব migration প্রয়োগ করতে হবে, নইলে ইনবক্স ভাঙে (`relation "lifecycle_stages" does not exist`)।
+
+### স্প্রিন্ট ১ (`docs/FEATURE_PLAN_SPRINT1.md`, রিপোর্ট `docs/SPRINT1_EXECUTION_REPORT.md`)
+
+- **Unreplied + SLA**: `conversations.last_outbound_message_at` (সব outbound পথে বসে: send, image, template, echo, broadcast; migration-এ ব্যাকফিল)। Unreplied = open + `last_customer_message_at` > `last_outbound_message_at` (বা outbound নেই); `unreadCount` দিয়ে নয়। SLA অপেক্ষা শুধু অফিস সময় (১০–২২, `office-hours.ts`) ও ছুটি (`holidays`) বাদ দিয়ে গোনা (`src/core/inbox/sla.ts`); সবুজ <৫, হলুদ ৫–১৫, লাল >১৫ মিনিট; লেবেল UI-ভাষা অনুযায়ী।
+- **লাইফসাইকেল স্টেজ**: `lifecycle_stages` টেবিল (নাম, ৮টি নির্ধারিত রঙের টোকেন, ক্রম, একটিমাত্র ডিফল্ট: partial unique index) আর শুধু `contacts.stage_id`। কন্টাক্টের স্টেজ অ্যাডমিন ও এজেন্ট বদলাতে পারে; স্টেজ তৈরি/বদল/মোছা শুধু অ্যাডমিন (`/settings/stages`)। স্টেজের নাম অ্যাডমিনের লেখা, তাই অনুবাদ হয় না।
+- **AI খসড়া** (`src/core/ai/draft.ts`): কখনো নিজে পাঠায় না; গ্রাহকের মেসেজ `<customer_message>`-এ মোড়ানো; প্রতি এজেন্টে মিনিটে ১০টি (মেমরিতে); provider বা জ্ঞানভান্ডার না থাকলে বোতাম নিষ্ক্রিয়। **আসল API key দিয়ে উত্তর যাচাই হয়নি।**
+- **ট্রান্সফার** (`transfer.ts`): এজেন্ট শুধু নিজের অ্যাসাইন-করা চ্যাট দিতে পারে, অন্যেরটা শুধু অ্যাডমিন; ট্রান্সফারে `bot_paused = true`; নোট `conversation_notes`-এ।
+- **কন্টাক্ট CSV export** (`export.ts`): শুধু অ্যাডমিন, সর্বোচ্চ ৫০০০, ফর্মুলা-ইনজেকশন সুরক্ষা (`=+-@` ইত্যাদির আগে `'`), BOM, প্রতি কন্টাক্টে এক সারি, শেষ-যোগাযোগের তারিখ ফিল্টার।
+- **যাচাই বাকি**: এজেন্ট রোলে UI, মোবাইল/dark mode, AI-র আসল উত্তর।
+- **স্থগিত**: round-robin (আগে presence লাগবে), কুরিয়ার ফ্রড চেকার (API প্রাপ্যতা ও গোপনীয়তা যাচাই আগে)।
+- **শিক্ষা**: `next dev` চলা অবস্থায় `next build` চালালে `.next/dev` টাইপ মুছে গিয়ে type-check ব্যর্থ হয়; build আলাদাভাবে, dev বন্ধ রেখে চালাও। বাংলা `বাতিল` অনুবাদ "Cancelled" (broadcast-এর অবস্থা); বোতামে "Cancel" চাইলে `বাতিল করুন` লেখো।
+
 ## Docker ছাড়া ডেভ ডাটাবেস
 
 - `npm run dev:db` PGlite (আসল Postgres, WASM) চালায় `.env`-এর `DATABASE_URL`-এর পোর্টে (ওভাররাইড: `DEV_DB_PORT`); ডেটা `.pglite/`-এ (git-এ যায় না)। প্রথমবার `npm run db:seed-dev` ও `scripts/create-user.ts` দরকার।

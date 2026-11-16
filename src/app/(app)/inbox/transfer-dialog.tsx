@@ -120,7 +120,7 @@ export function TransferDialog({
               disabled={pending}
               className={buttonClass("secondary", "md")}
             >
-              {t("বাতিল")}
+              {t("বাতিল করুন")}
             </button>
             <button
               type="submit"
