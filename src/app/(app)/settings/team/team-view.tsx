@@ -192,7 +192,7 @@ export function TeamView({ members }: { members: MemberView[] }) {
           <EmptyState icon={<Users aria-hidden className="size-8" />} title={t("কোনো সদস্য মেলেনি।")} />
         ) : (
           <div className="relative overflow-x-auto">
-            <table className="w-full min-w-[46rem] text-left text-sm">
+            <table className="table-cards w-full min-w-[46rem] text-left text-sm">
               <thead className="bg-surface-2/60 text-xs font-bold uppercase tracking-wide text-muted">
                 <tr>
                   <th scope="col" className="px-4 py-3">{t("সদস্য")}</th>
@@ -222,8 +222,8 @@ export function TeamView({ members }: { members: MemberView[] }) {
                         {m.mustChangePassword && <Badge tone="warning">{t("পাসওয়ার্ড বদলানো বাকি")}</Badge>}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted">{m.lastLogin}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted">{m.joined}</td>
+                    <td data-label={t("শেষ লগইন")} className="whitespace-nowrap px-4 py-3 text-muted">{m.lastLogin}</td>
+                    <td data-label={t("যোগ হয়েছে")} className="whitespace-nowrap px-4 py-3 text-muted">{m.joined}</td>
                     <td className="px-4 py-3">
                       {m.isMe ? (
                         <span className="block text-right text-xs text-muted">—</span>

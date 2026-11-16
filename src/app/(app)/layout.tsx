@@ -1,9 +1,13 @@
 import { and, eq, gt, sql } from "drizzle-orm";
 import { Bell, LogOut, Search } from "lucide-react";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AppNav } from "@/components/app-nav";
 import { MobileBar } from "@/components/mobile-bar";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { Sidebar } from "@/components/sidebar";
+import { SIDEBAR_COOKIE } from "@/lib/sidebar-cookie";
 import { LanguageIconButton, LanguageSwitch } from "@/components/language-switch";
 import { ThemeIconButton, ThemeSwitch } from "@/components/theme-switch";
 import { Avatar, Badge, LogoMark } from "@/components/ui";
@@ -37,6 +41,8 @@ function Brand() {
 async function AuthShell({ children }: { children: React.ReactNode }) {
   const user = await requireUserAllowingPasswordChange();
   const { locale, t } = await getT();
+  // Whether the person shrank the side menu last time (kept in a cookie so there is no flash).
+  const collapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed";
 
   // Open conversations with something unread: shown as a badge on the inbox link.
   const [{ n }] = await db
@@ -70,12 +76,9 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <I18nProvider locale={locale}>
     <div className="flex h-dvh">
-      <aside className="hidden w-64 shrink-0 flex-col gap-6 border-r border-border bg-surface p-4 lg:flex">
-        <Brand />
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <AppNav role={user.role} inboxUnread={n} ordersOpen={ordersOpen} />
-        </div>
-      </aside>
+      <Sidebar initialCollapsed={collapsed} brand={<Brand />} brandMini={<LogoMark />}>
+        <AppNav role={user.role} inboxUnread={n} ordersOpen={ordersOpen} />
+      </Sidebar>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="hidden h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-6 lg:flex">
@@ -114,6 +117,7 @@ async function AuthShell({ children }: { children: React.ReactNode }) {
         </header>
         <MobileBar brand={<Brand />} nav={<AppNav role={user.role} inboxUnread={n} ordersOpen={ordersOpen} />} footer={userCard} />
         <div className="scroll-thin page-glow min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <MobileTabBar inboxUnread={n} ordersOpen={ordersOpen} />
       </div>
     </div>
     </I18nProvider>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Info, MessagesSquare, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, MessageCircle, MessagesSquare, XCircle, Zap } from "lucide-react";
 
 // Shared UI kit ("Soft UI Evolution"). Pages compose these instead of repeating Tailwind
 // strings, so the whole app changes from one place. Server components unless noted.
@@ -182,25 +182,39 @@ function hueOf(name: string): number {
 }
 
 /** Round initial avatar in a soft colour of its own; a corner dot tells the channel. */
-export function Avatar({ name, channel, size = "md" }: { name: string; channel?: "whatsapp" | "messenger"; size?: "sm" | "md" | "lg" }) {
+export function Avatar({ name, channel, size = "md" }: { name: string; channel?: "whatsapp" | "messenger"; size?: "xs" | "sm" | "md" | "lg" }) {
   const initial = Array.from(name.trim())[0]?.toUpperCase() ?? "?";
-  const dim = { sm: "size-8 text-sm", md: "size-11 text-base", lg: "size-12 text-lg" }[size];
-  const dot = channel === "whatsapp" ? "bg-whatsapp-dot" : "bg-messenger-dot";
+  const dim = { xs: "size-5 text-[10px]", sm: "size-8 text-sm", md: "size-11 text-base", lg: "size-12 text-lg" }[size];
+  // The little channel badge on the corner: a coloured disc with a white glyph, ringed to cut it out of the avatar.
+  const badge = { xs: "", sm: "size-4", md: "size-[18px]", lg: "size-5" }[size];
+  const glyph = size === "sm" ? "size-2.5" : "size-3";
+  const Glyph = channel === "whatsapp" ? MessageCircle : Zap;
   return (
-    <span className="relative inline-flex shrink-0">
+    <span className="relative inline-flex shrink-0 self-start">
       <span
         aria-hidden
         style={{ "--av-h": hueOf(name) } as React.CSSProperties}
         className={cn(
-          "inline-flex items-center justify-center rounded-full font-bold",
-          "bg-[hsl(var(--av-h)_75%_91%)] text-[hsl(var(--av-h)_55%_26%)]",
-          "dark:bg-[hsl(var(--av-h)_32%_26%)] dark:text-[hsl(var(--av-h)_85%_88%)]",
+          "inline-flex items-center justify-center rounded-full font-bold shadow-[inset_0_0_0_1px_hsl(var(--av-h)_50%_50%/0.12)]",
+          "bg-[linear-gradient(145deg,hsl(var(--av-h)_85%_92%),hsl(var(--av-h)_72%_82%))] text-[hsl(var(--av-h)_60%_24%)]",
+          "dark:bg-[linear-gradient(145deg,hsl(var(--av-h)_36%_30%),hsl(var(--av-h)_34%_22%))] dark:text-[hsl(var(--av-h)_85%_90%)]",
           dim,
         )}
       >
         {initial}
       </span>
-      {channel && <span aria-hidden className={cn("absolute -right-0.5 -bottom-0.5 size-3.5 rounded-full ring-2 ring-surface", dot)} />}
+      {channel && badge && (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute -right-1 -bottom-1 inline-flex items-center justify-center rounded-full text-white ring-2 ring-surface",
+            channel === "whatsapp" ? "bg-whatsapp-dot" : "bg-messenger-dot",
+            badge,
+          )}
+        >
+          <Glyph className={cn(glyph, channel === "messenger" && "fill-current")} strokeWidth={channel === "whatsapp" ? 2.6 : 2} />
+        </span>
+      )}
     </span>
   );
 }

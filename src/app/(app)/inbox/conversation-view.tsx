@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Bot, Check, CheckCheck, CircleCheck, Clock, FileText, Loader2, RotateCcw, StickyNote, UserRound } from "lucide-react";
-import { Alert, Avatar, Badge, buttonClass, ChannelBadge, cn, fieldClass } from "@/components/ui";
-import { StagePill } from "@/components/stage-pill";
+import { AlertCircle, ArrowLeft, Check, CheckCheck, CircleCheck, Clock, FileText, Loader2, RotateCcw, StickyNote } from "lucide-react";
+import { Alert, Avatar, Badge, buttonClass, ChannelBadge, cn } from "@/components/ui";
 import { StageSelector } from "./stage-selector";
 import { TransferDialog } from "./transfer-dialog";
 import type { LifecycleStage } from "@/core/contacts/stages";
-import { assignAction, resumeBotAction, statusAction } from "@/core/inbox/actions";
+import { statusAction } from "@/core/inbox/actions";
 import type { ConversationDetail } from "@/core/inbox/queries";
 import { replyWindow } from "@/core/inbox/window";
 import { retryMediaAction } from "@/core/media/actions";
@@ -16,9 +15,10 @@ import type { TFn } from "@/lib/i18n";
 import type { QuickReply } from "@/core/inbox/quick-reply-match";
 import { NoteForm, ReplyForm, ScrollToBottom } from "./client-bits";
 import { NewOrderButton } from "./new-order-button";
-import { STATUS_LABEL, STATUS_TONE } from "../orders/labels";
+import { AssignSelect, HeaderDetails } from "./header-controls";
 import type { OrderStatus } from "@/core/orders/rules";
-import { TagBar, type TagView } from "./tag-bar";
+import { TagsButton, type TagView } from "./tag-bar";
+import { HeaderMenu } from "./header-menu";
 import { TemplatePanel, type TemplateOption } from "./template-panel";
 import { inboxHref } from "./conversation-list";
 import type { InboxParams } from "./page";
@@ -175,41 +175,44 @@ export async function ConversationView({
 
   return (
     <>
-      <header className="space-y-3 border-b border-border bg-surface px-3 py-3.5 sm:px-5">
-        <div className="flex items-center gap-3">
-          <Link href={inboxHref(params, { c: null })} aria-label={t("তালিকায় ফিরুন")} className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-2 md:hidden">
-            <ArrowLeft aria-hidden className="size-5" />
-          </Link>
+      <header className="@container flex flex-wrap items-center gap-x-3 gap-y-2.5 border-b border-border bg-surface px-3 py-3 sm:px-5">
+        {/* Who this is */}
+        <Link href={inboxHref(params, { c: null })} aria-label={t("তালিকায় ফিরুন")} className="order-1 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-2 md:hidden">
+          <ArrowLeft aria-hidden className="size-5" />
+        </Link>
+        <div className="order-1 flex min-w-0 flex-1 basis-56 items-center gap-3">
           <Avatar name={name} channel={c.channelType} size="lg" />
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h2 className="truncate text-lg font-bold tracking-tight">{name}</h2>
               <ChannelBadge type={c.channelType} />
-              {c.stageName && (
-                <StagePill name={c.stageName} colorKey={c.stageColorKey ?? "slate"} />
-              )}
               {closed && <Badge>{t("বন্ধ")}</Badge>}
             </div>
             <p className="truncate text-sm text-muted">
-              {c.identityExternalId} · {c.channelName} ·{" "}
-              <Link href={`/contacts/${c.contactId}`} className="text-brand underline-offset-2 hover:underline">
-                {t("কন্টাক্ট দেখুন")}
-              </Link>
+              {c.identityExternalId} · {c.channelName}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {stages.length > 0 && (
-            <StageSelector
-              contactId={c.contactId}
-              currentStageId={c.stageId}
-              stages={stages}
-            />
-          )}
+        {/* The main action, and the rarely used things behind "more" */}
+        <div className="order-2 flex shrink-0 items-center gap-2 @4xl:order-3">
+          <form action={statusAction}>
+            <input type="hidden" name="conversationId" value={c.id} />
+            <input type="hidden" name="status" value={closed ? "open" : "closed"} />
+            <button type="submit" className={buttonClass(closed ? "secondary" : "primary", "sm", "!h-9")}>
+              {closed ? <RotateCcw aria-hidden className="size-4" /> : <CircleCheck aria-hidden className="size-4" />}
+              {closed ? t("আবার খুলুন") : t("সমাধান হয়েছে")}
+            </button>
+          </form>
+          <HeaderMenu conversationId={c.id} contactId={c.contactId} contactName={name} botPaused={c.botPaused && !c.needsHuman} orders={orders} />
+        </div>
 
-          <NewOrderButton contactId={c.contactId} contactLabel={name} conversationId={c.id} />
-
+        {/* Stage, owner and quick actions: one toolbar (behind a toggle on phones) */}
+        <HeaderDetails>
+          {stages.length > 0 && <StageSelector contactId={c.contactId} currentStageId={c.stageId} stages={stages} />}
+          <AssignSelect conversationId={c.id} current={c.assignedUserId} currentName={c.assigneeName} options={assignable.map((u) => ({ id: u.id, name: u.name }))} />
+          <span aria-hidden className="mx-0.5 hidden h-5 w-px bg-border md:block" />
+          <NewOrderButton contactId={c.contactId} contactLabel={name} conversationId={c.id} openCount={orders.filter((o) => o.status === "pending" || o.status === "in_progress").length} />
           <TransferDialog
             conversationId={c.id}
             currentAssigneeId={c.assignedUserId}
@@ -218,62 +221,15 @@ export async function ConversationView({
             viewerId={viewer.id}
             viewerRole={viewer.role}
           />
-
-          <form action={assignAction} className="flex items-center gap-2">
-            <input type="hidden" name="conversationId" value={c.id} />
-            <label htmlFor="assign" className="sr-only">{t("দায়িত্বে কে")}</label>
-            <UserRound aria-hidden className="size-4 text-muted" />
-            {/* key: React resets the form after the action, so remount to show the new server value */}
-            <select key={c.assignedUserId ?? "none"} id="assign" name="userId" defaultValue={c.assignedUserId ?? ""} className={cn(fieldClass, "min-h-9 w-auto py-1")}>
-              <option value="">{t("দায়িত্বে কেউ নেই")}</option>
-              {assignable.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-              {c.assignedUserId && !assignable.some((u) => u.id === c.assignedUserId) && <option value={c.assignedUserId}>{c.assigneeName}</option>}
-            </select>
-            <button type="submit" className={buttonClass("secondary", "sm")}>{t("সেট")}</button>
-          </form>
-
-          <form action={statusAction}>
-            <input type="hidden" name="conversationId" value={c.id} />
-            <input type="hidden" name="status" value={closed ? "open" : "closed"} />
-            <button type="submit" className={buttonClass("secondary", "sm")}>
-              {closed ? <RotateCcw aria-hidden className="size-4" /> : <CircleCheck aria-hidden className="size-4" />}
-              {closed ? t("আবার খুলুন") : t("সমাধান হয়েছে")}
-            </button>
-          </form>
-
-          {c.botPaused && !c.needsHuman && (
-            <form action={resumeBotAction}>
-              <input type="hidden" name="conversationId" value={c.id} />
-              <button type="submit" className={buttonClass("secondary", "sm")} title={t("মানুষ উত্তর দিয়েছে বলে bot বন্ধ আছে")}>
-                <Bot aria-hidden className="size-4" />
-                {t("bot আবার চালু করুন")}
-              </button>
-            </form>
-          )}
-        </div>
-
-        <TagBar contactId={c.contactId} tags={contactTags} allTags={allTags} />
-
-        {orders.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="font-semibold text-muted">{t("এই গ্রাহকের অর্ডার")}:</span>
-            {orders.slice(0, 6).map((o) => (
-              <Link key={o.id} href={`/orders?status=all&o=${o.id}`} title={o.title} className="inline-flex items-center gap-1">
-                <Badge tone={STATUS_TONE[o.status]}>{o.label} · {t(STATUS_LABEL[o.status])}</Badge>
-              </Link>
-            ))}
-            {orders.length > 6 && (
-              <Link href={`/orders?status=all&q=${encodeURIComponent(name)}`} className="text-brand hover:underline">{t("সব দেখুন")}</Link>
-            )}
-          </div>
-        )}
+          <TagsButton contactId={c.contactId} tags={contactTags} allTags={allTags} />
+        </HeaderDetails>
 
         {c.needsHuman && (
-          <Alert tone="danger">
-            <strong>{t("bot উত্তর দিতে পারেনি, একজন মানুষ দরকার।")}</strong> {t("আপনি উত্তর দিলে বা কথোপকথন সমাধান করলে এই চিহ্ন সরে যাবে।")}
-          </Alert>
+          <div className="order-4 w-full">
+            <Alert tone="danger">
+              <strong>{t("bot উত্তর দিতে পারেনি, একজন মানুষ দরকার।")}</strong> {t("আপনি উত্তর দিলে বা কথোপকথন সমাধান করলে এই চিহ্ন সরে যাবে।")}
+            </Alert>
+          </div>
         )}
       </header>
 

@@ -202,6 +202,61 @@ input[type="file"] {
   scrollbar-color: var(--border-strong) transparent;
 }
 
+/* A data table that turns into stacked cards on a phone (below md). Put it on the <table>.
+   The header row stays for screen readers; <td data-label="..."> prints its label in front of the value;
+   <td data-wide> takes a full line. Wide report tables (a heat map) should scroll instead. */
+@media (max-width: 767px) {
+  .table-cards {
+    min-width: 0;
+  }
+  .table-cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .table-cards,
+  .table-cards tbody {
+    display: block;
+  }
+  .table-cards tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem 0.75rem;
+    padding: 0.875rem 1rem;
+  }
+  .table-cards td {
+    display: block;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    white-space: normal;
+  }
+  .table-cards td:first-child,
+  .table-cards td[data-wide] {
+    flex-basis: 100%;
+  }
+  .table-cards td:last-child {
+    margin-left: auto;
+  }
+  .table-cards td[data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+}
+
+/* Scrolls but shows no scrollbar (the collapsed side menu). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Soft WhatsApp-green glow behind page content: depth without decoration. */
 .page-glow {
   background-image: var(--page-glow);

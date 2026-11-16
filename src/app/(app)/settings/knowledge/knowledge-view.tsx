@@ -148,7 +148,7 @@ export function KnowledgeView({ articles, settings }: { articles: ArticleView[];
             <EmptyState icon={<BookOpen aria-hidden className="size-8" />} title={articles.length === 0 ? t("কোনো লেখা নেই।") : t("কিছু মেলেনি।")} />
           ) : (
             <div className="relative overflow-x-auto">
-              <table className="w-full min-w-[40rem] text-left text-sm">
+              <table className="table-cards w-full min-w-[40rem] text-left text-sm">
                 <thead className="bg-surface-2/60 text-xs font-bold uppercase tracking-wide text-muted">
                   <tr>
                     <th scope="col" className="px-4 py-3">{t("শিরোনাম")}</th>
@@ -162,9 +162,9 @@ export function KnowledgeView({ articles, settings }: { articles: ArticleView[];
                   {shown.map((a) => (
                     <tr key={a.id} className={cn("transition-colors hover:bg-surface-2/40", !a.enabled && "opacity-70")}>
                       <td className="max-w-56 px-4 py-3 font-semibold"><p className="line-clamp-2">{a.title}</p></td>
-                      <td className="max-w-md px-4 py-3 text-muted"><p className="line-clamp-2 whitespace-pre-wrap" title={a.content}>{a.content}</p></td>
+                      <td data-wide className="max-w-md px-4 py-3 text-muted"><p className="line-clamp-2 whitespace-pre-wrap" title={a.content}>{a.content}</p></td>
                       <td className="px-4 py-3"><Badge tone={a.enabled ? "success" : "neutral"}>{a.enabled ? t("চালু") : t("বন্ধ")}</Badge></td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted">{a.updated}</td>
+                      <td data-label={t("হালনাগাদ")} className="whitespace-nowrap px-4 py-3 text-muted">{a.updated}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-0.5">
                           <button type="button" className={iconBtn} title={t("সম্পাদনা")} aria-label={t("সম্পাদনা") + ": " + a.title} onClick={() => setEditing(a)}>

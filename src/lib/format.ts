@@ -22,9 +22,9 @@ function fmt(intl: string, kind: "time" | "date" | "full"): Intl.DateTimeFormat 
 }
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
 
-/** Today: time. Other days: date. Always Asia/Dhaka. */
+/** Today: just the time. Other days: date and time, so you can tell when in the day it was. Always Asia/Dhaka. */
 export function formatListTime(date: Date, now = new Date(), intl = DEFAULT_INTL): string {
-  return dayKey.format(date) === dayKey.format(now) ? fmt(intl, "time").format(date) : fmt(intl, "date").format(date);
+  return dayKey.format(date) === dayKey.format(now) ? fmt(intl, "time").format(date) : fmt(intl, "full").format(date);
 }
 
 export function formatFull(date: Date, intl = DEFAULT_INTL): string {

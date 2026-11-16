@@ -172,7 +172,7 @@ export function StagesView({ stages }: { stages: LifecycleStage[] }) {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="table-cards w-full text-left text-sm">
               <thead className="border-b border-border bg-surface-2 text-xs font-semibold text-muted uppercase">
                 <tr>
                   <th className="px-4 py-3">{t("নাম ও প্রিভিউ")}</th>
@@ -190,10 +190,10 @@ export function StagesView({ stages }: { stages: LifecycleStage[] }) {
                         <StagePill name={s.name} colorKey={s.colorKey} />
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted">
+                    <td data-label={t("রং")} className="px-4 py-3 text-muted">
                       <span className="capitalize">{s.colorKey}</span>
                     </td>
-                    <td className="px-4 py-3 text-center text-muted font-mono">
+                    <td data-label={t("ক্রম")} className="px-4 py-3 text-center text-muted font-mono">
                       {num(s.sortOrder)}
                     </td>
                     <td className="px-4 py-3 text-center">

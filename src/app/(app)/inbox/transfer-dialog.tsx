@@ -45,11 +45,11 @@ export function TransferDialog({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={buttonClass("secondary", "sm", "gap-1.5")}
+        className={buttonClass("secondary", "sm", "!size-9 !px-0")}
         title={t("অন্য এজেন্টের কাছে চ্যাট হস্তান্তর করুন")}
+        aria-label={t("ট্রান্সফার")}
       >
-        <ArrowRightLeft aria-hidden className="size-3.5" />
-        <span>{t("ট্রান্সফার")}</span>
+        <ArrowRightLeft aria-hidden className="size-4" />
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title={t("চ্যাট ট্রান্সফার")} size="md">

@@ -58,7 +58,7 @@ export function ImportForm({ channels }: { channels: { id: string; name: string 
             <li>{t("ত্রুটিপূর্ণ সারি:")} {num(r.errors.length)}</li>
           </ul>
           {r.errors.length > 0 && (
-            <ul className="max-h-48 overflow-y-auto rounded bg-surface-2 p-2 text-xs">
+            <ul className="scroll-thin max-h-48 overflow-y-auto rounded bg-surface-2 p-2 text-xs">
               {r.errors.slice(0, 100).map((e) => (
                 <li key={`${e.line}-${e.message}`}>{t("সারি {line}:", { line: num(e.line) })} {t(e.message)}</li>
               ))}
